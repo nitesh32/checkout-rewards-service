@@ -1,0 +1,83 @@
+### Executable examples (VS Code "REST Client" or JetBrains HTTP Client).
+### Run the requests top to bottom; later ones reuse earlier responses.
+
+@baseUrl = http://localhost:3000
+@idempotencyKey = 6f1c2a52-6f0e-4f43-9a7e-2d3c7a1b0001
+
+### List products (cursor paginated; filters: q, inStock)
+# @name listProducts
+GET {{baseUrl}}/products?limit=3&inStock=true
+
+###
+@productId = {{listProducts.response.body.data[0].id}}
+
+### Create a cart
+# @name createCart
+POST {{baseUrl}}/carts
+
+###
+@cartId = {{createCart.response.body.id}}
+
+### Add an item (adding the same product again merges into the line)
+POST {{baseUrl}}/carts/{{cartId}}/items
+Content-Type: application/json
+
+{ "productId": "{{productId}}", "quantity": 2 }
+
+### Change the quantity (absolute value)
+PATCH {{baseUrl}}/carts/{{cartId}}/items/{{productId}}
+Content-Type: application/json
+
+{ "quantity": 3 }
+
+### View the cart: live prices, subtotal, per-line availability
+GET {{baseUrl}}/carts/{{cartId}}
+
+### Check out. 201 the first time; repeating this exact request returns 200 + Idempotent-Replayed: true
+# @name checkout
+POST {{baseUrl}}/carts/{{cartId}}/checkout
+Idempotency-Key: {{idempotencyKey}}
+Content-Type: application/json
+
+{}
+
+###
+@orderId = {{checkout.response.body.id}}
+
+### Retrieve the order snapshot
+GET {{baseUrl}}/orders/{{orderId}}
+
+### Same key, different body: 422 IDEMPOTENCY_KEY_REUSED
+POST {{baseUrl}}/carts/{{cartId}}/checkout
+Idempotency-Key: {{idempotencyKey}}
+Content-Type: application/json
+
+{ "couponCode": "SAVE-ABCDEFGH" }
+
+### Remove an item (404 CART_ITEM_NOT_FOUND if absent; 409 CART_NOT_OPEN after checkout)
+DELETE {{baseUrl}}/carts/{{cartId}}/items/{{productId}}
+
+### ---- Administrative operations ----
+
+### Generate a coupon for the earliest unrewarded milestone (409 NO_ELIGIBLE_MILESTONE if none)
+# @name generateCoupon
+POST {{baseUrl}}/admin/coupons
+
+###
+@couponCode = {{generateCoupon.response.body.code}}
+
+### Check out with a coupon, and with a price guard: PRICE_CHANGED if the total differs
+POST {{baseUrl}}/carts/{{cartId}}/checkout
+Idempotency-Key: 6f1c2a52-6f0e-4f43-9a7e-2d3c7a1b0002
+Content-Type: application/json
+
+{ "couponCode": "{{couponCode}}", "expectedTotalMinor": 1000 }
+
+### List coupons (filter: status=AVAILABLE|REDEEMED)
+GET {{baseUrl}}/admin/coupons?status=AVAILABLE&limit=20
+
+### List orders, newest first (filters: from, to, couponCode)
+GET {{baseUrl}}/admin/orders?limit=20
+
+### Sales report (read-only)
+GET {{baseUrl}}/admin/reports/sales
