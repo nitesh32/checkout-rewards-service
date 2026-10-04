@@ -4,12 +4,22 @@ import type { ProductDoc } from './collections.js';
 type SeedProduct = Pick<ProductDoc, 'sku' | 'name' | 'unitPriceMinor' | 'stock'>;
 
 export const SEED_PRODUCTS: readonly SeedProduct[] = [
-  { sku: 'NOTEBOOK-A5', name: 'Dotted Notebook A5', unitPriceMinor: 24_900, stock: 200 },
-  { sku: 'PEN-GEL-BLK', name: 'Gel Pen Black (Pack of 5)', unitPriceMinor: 14_950, stock: 500 },
-  { sku: 'MUG-CERAMIC', name: 'Ceramic Mug 350ml', unitPriceMinor: 39_900, stock: 120 },
-  { sku: 'BOTTLE-STEEL', name: 'Steel Water Bottle 750ml', unitPriceMinor: 79_900, stock: 80 },
-  { sku: 'BAG-CANVAS', name: 'Canvas Tote Bag', unitPriceMinor: 49_900, stock: 60 },
-  { sku: 'LAMP-DESK-LTD', name: 'Desk Lamp (Limited Edition)', unitPriceMinor: 349_900, stock: 3 },
+  { sku: 'SPEAKER-BT-BLK', name: 'Portable Bluetooth Speaker', unitPriceMinor: 799_900, stock: 80 },
+  { sku: 'EARBUDS-TWS-BLK', name: 'True Wireless Earbuds', unitPriceMinor: 1_299_900, stock: 120 },
+  {
+    sku: 'HEADPHONES-OVR-BLK',
+    name: 'Wireless Over-Ear Headphones',
+    unitPriceMinor: 2_499_000,
+    stock: 60,
+  },
+  { sku: 'PHONE-PRO-BLU', name: 'Smartphone Pro 256GB', unitPriceMinor: 6_990_000, stock: 40 },
+  { sku: 'WATCH-SMART-BLU', name: 'Smartwatch Sport', unitPriceMinor: 3_290_000, stock: 50 },
+  {
+    sku: 'CAMERA-MIRRORLESS',
+    name: 'Mirrorless Camera Body (Limited Edition)',
+    unitPriceMinor: 12_490_000,
+    stock: 3,
+  },
 ];
 
 /** Idempotent: existing products keep their current price and stock. */

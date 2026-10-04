@@ -1,0 +1,13 @@
+{
+  "name": "Margin",
+  "short_name": "Margin",
+  "description": "Premium audio, phones, wearables and cameras. Premium tech, made simple.",
+  "start_url": "/products",
+  "display": "standalone",
+  "background_color": "#f7fbf8",
+  "theme_color": "#138b3c",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

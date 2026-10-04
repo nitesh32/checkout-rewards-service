@@ -36,5 +36,14 @@ services:
       REWARD_EVERY_N_ORDERS: 5
       REWARD_DISCOUNT_PERCENT: 10
 
+  client:
+    build: ./client
+    depends_on:
+      - api
+    ports:
+      - '5173:5173'
+    environment:
+      API_URL: http://api:3000
+
 volumes:
   mongo-data:

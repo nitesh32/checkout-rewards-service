@@ -198,6 +198,31 @@ integrating anything.
 A real provider needs the order created as `PENDING`, a charge keyed by the order id, and an outbox
 or saga to finalise (deferred).
 
+### Decision 10: Product search runs in the browser, not per keystroke on the server
+
+**Context:** The shop should feel instant while the shopper types. The API supports a `q` filter
+(case-insensitive regex on the name), but each keystroke then costs a request, a possible flash of
+the loading state, and an unindexed regex scan.
+
+**Options considered:** (a) Server search per keystroke, debounced; (b) server search with
+`keepPreviousData`, request cancellation and an indexed lower-case prefix field (or Atlas Search for
+typo tolerance); (c) filter the already-loaded catalogue in the browser.
+
+**Choice:** (c). The shop loads the whole catalogue (the API's page maximum of 100) and filters,
+categorises and sorts it locally in one pure function (`filterProducts.ts`, unit-tested). No request
+is made while typing. The URL is updated after a 200 ms pause, only so a search can be bookmarked and
+the back button works; 200 ms is the debounce Algolia recommends, and delays above 300 ms feel slow.
+
+**Why:** For a catalogue of this size it is the fastest option and the simplest to reason about.
+Research on MongoDB search also showed that case-insensitive regex cannot use an index well and text
+indexes do not match prefixes, so fixing the server path properly means new indexed fields or Atlas
+Search, which is not justified here.
+
+**Consequences:** Past 100 products the browser no longer holds everything, so search must move
+to the server: use `q` with cursor pagination, keep the previous results visible while a new query
+loads (`placeholderData: keepPreviousData`), cancel superseded requests (the query function already
+passes its `AbortSignal` to the API client), and add an indexed lower-case prefix field or Atlas Search.
+
 ## 4. Transaction, concurrency and idempotency strategy
 
 **Checkout, in one transaction** (`modules/checkout/service.ts`):

@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "openapi:export": "tsx scripts/exportOpenapi.ts",
+    "e2e:server": "tsx scripts/startE2eServer.ts"
   },
   "dependencies": {
     "@fastify/swagger": "^9.9.1",

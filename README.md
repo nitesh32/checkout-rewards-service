@@ -12,6 +12,14 @@ The reasoning behind the design lives in **[DECISIONS.md](./DECISIONS.md)**.
 ## Run it
 
 ```bash
+make up        # MongoDB + API (http://localhost:3000, docs at /docs) + client (http://localhost:5173)
+make test      # backend tests, client tests, browser test
+make reset     # stop everything and delete the database
+```
+
+Without `make`, `docker compose up --build` does the same as `make up`. The details:
+
+```bash
 docker compose up --build        # API on http://localhost:3000, Swagger UI on /docs
 ```
 
@@ -31,7 +39,13 @@ npm run dev                      # seeds 6 products on start (idempotent)
 | `REWARD_EVERY_N_ORDERS`   | `5`                                                | `n`: one coupon per n-th order   |
 | `REWARD_DISCOUNT_PERCENT` | `10`                                               | `x`: percent off for each coupon |
 
-Seed data: 6 products, including `LAMP-DESK-LTD` with only **3** units in stock.
+Seed data: 6 premium-electronics products (speaker, earbuds, headphones, phone, smartwatch, camera), including `CAMERA-MIRRORLESS` with only **3** units in stock. Seeding only adds missing SKUs, so run `make reset` to replace an existing database.
+
+## Product photos
+
+All six products have real photos from Burst (Shopify's free stock library), bundled from
+`client/src/assets/products/<SKU>.webp`. Photographers and licence terms are in
+[CREDITS.md](./client/src/assets/products/CREDITS.md).
 
 ## Test it
 
