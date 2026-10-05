@@ -36,25 +36,25 @@ npm install
 npm run dev                      # seeds 6 products on start (idempotent)
 ```
 
-| Variable                  | Default                                            | Meaning                          |
-| ------------------------- | -------------------------------------------------- | -------------------------------- |
-| `PORT`                    | `3000`                                             |                                  |
-| `MONGO_URI`               | `mongodb://localhost:27017/?directConnection=true` |                                  |
-| `REWARD_EVERY_N_ORDERS`   | `5`                                                | `n`: one coupon per n-th order   |
-| `REWARD_DISCOUNT_PERCENT` | `10`                                               | `x`: percent off for each coupon |
+| Variable                  | Default                                            | Meaning                                |
+| ------------------------- | -------------------------------------------------- | -------------------------------------- |
+| `PORT`                    | `3000`                                             |                                        |
+| `MONGO_URI`               | `mongodb://localhost:27017/?directConnection=true` |                                        |
+| `REWARD_EVERY_N_ORDERS`   | `5`                                                | `n`: every n-th order unlocks a coupon |
+| `REWARD_DISCOUNT_PERCENT` | `10`                                               | `x`: percent off for each coupon       |
 
 Seed data: 6 premium-electronics products (speaker, earbuds, headphones, phone, smartwatch, camera), including `CAMERA-MIRRORLESS` with only **3** units in stock. Seeding only adds missing SKUs, so run `make reset` to replace an existing database.
 
 ## Try the rewards in two minutes
 
-As in the assignment: every 5th order reaches a milestone, and an administrator generates the
-reward for it.
+Every 5th order unlocks a 10% reward automatically: the order that reaches the milestone creates
+the coupon.
 
-1. `make reset && make up`, open http://localhost:5173 and place 5 orders. The **Rewards** page (and
+1. `make reset && make up`, open http://localhost:5173 and place orders. The **Rewards** page (and
    each order confirmation) shows a tracker: "3 orders left to unlock 10% off", with one step per
    order.
-2. After the 5th order the tracker says the reward is unlocked. On **Rewards**, press **Generate
-   reward** (the admin operation `POST /admin/coupons`). The tracker then starts again from zero.
+2. The 5th order's confirmation says "This order unlocked 10% off your next order" with the code.
+   The tracker starts again from zero.
 3. Add a product again: checkout suggests the reward with its exact saving. Apply it (or use
    **Use at checkout** on the Rewards page) and place the order.
 4. `GET /admin/reports/sales` (Swagger at http://localhost:3000/docs) shows the discount and the
@@ -76,8 +76,8 @@ npm run lint
 
 Tests run against a real in-memory MongoDB replica set, so the concurrency tests exercise genuine
 transaction conflicts rather than mocks: oversell race, same-cart race, same-coupon race, ten
-parallel retries with one idempotency key, concurrent coupon generation, rollback on failed
-payment, and report reconciliation.
+parallel retries with one idempotency key, one coupon per milestone under concurrent orders,
+rollback on failed payment, and report reconciliation.
 
 ## API
 
@@ -85,30 +85,30 @@ Interactive docs: `GET /docs` (OpenAPI JSON at `/docs/json`). Runnable examples:
 Money is always an integer in minor units (paise), in fields ending `Minor`. Routes under
 `/admin` are the administrative operations; authentication is out of scope.
 
-| Method | Path                              | Success | Notable errors                                                                                                             |
-| ------ | --------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/products`                       | 200     | 400 `INVALID_CURSOR`. Query: `limit`, `cursor`, `q`, `inStock`                                                             |
-| GET    | `/products/:productId`            | 200     | 404 `PRODUCT_NOT_FOUND`                                                                                                    |
-| POST   | `/carts`                          | 201     |                                                                                                                            |
-| GET    | `/carts/:cartId`                  | 200     | 404 `CART_NOT_FOUND`. Live prices; each line has `isPurchasable`                                                           |
-| POST   | `/carts/:cartId/items`            | 200     | 404 `PRODUCT_NOT_FOUND`, 409 `INSUFFICIENT_STOCK` / `CART_NOT_OPEN`, 422 `QUANTITY_LIMIT_EXCEEDED`, 400 `VALIDATION_ERROR` |
-| PATCH  | `/carts/:cartId/items/:productId` | 200     | as above, plus 404 `CART_ITEM_NOT_FOUND`                                                                                   |
-| DELETE | `/carts/:cartId/items/:productId` | 200     | 404 `CART_ITEM_NOT_FOUND`, 409 `CART_NOT_OPEN`                                                                             |
-| GET    | `/carts/:cartId/quote`            | 200     | Read-only preview of totals; query `couponCode?`. 404 `COUPON_NOT_FOUND`, 409 `COUPON_ALREADY_REDEEMED` / `CART_NOT_OPEN`  |
-| GET    | `/rewards`                        | 200     | Public list of available rewards `[{ code, percentOff }]`, best first                                                      |
-| GET    | `/rewards/progress`               | 200     | Orders counted towards the next reward and orders left; restarts after each generated reward                               |
-| POST   | `/carts/:cartId/checkout`         | 201/200 | Header `Idempotency-Key` required. Body `{ couponCode?, expectedTotalMinor? }`. See below                                  |
-| GET    | `/orders/:orderId`                | 200     | 404 `ORDER_NOT_FOUND`                                                                                                      |
-| POST   | `/admin/coupons`                  | 201     | 409 `NO_ELIGIBLE_MILESTONE` (details: `placedOrders`, `nextMilestoneAt`)                                                   |
-| GET    | `/admin/coupons`                  | 200     | Paginated; filter `status`                                                                                                 |
-| GET    | `/admin/orders`                   | 200     | Paginated, newest first; filters `from`, `to`, `couponCode`                                                                |
-| GET    | `/admin/reports/sales`            | 200     | Read-only snapshot                                                                                                         |
+| Method | Path                              | Success | Notable errors                                                                                                                   |
+| ------ | --------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/products`                       | 200     | 400 `INVALID_CURSOR`. Query: `limit`, `cursor`, `q`, `inStock`                                                                   |
+| GET    | `/products/:productId`            | 200     | 404 `PRODUCT_NOT_FOUND`                                                                                                          |
+| POST   | `/carts`                          | 201     |                                                                                                                                  |
+| GET    | `/carts/:cartId`                  | 200     | 404 `CART_NOT_FOUND`. Live prices; each line has `isPurchasable`                                                                 |
+| POST   | `/carts/:cartId/items`            | 200     | 404 `PRODUCT_NOT_FOUND`, 409 `INSUFFICIENT_STOCK` / `CART_NOT_OPEN`, 422 `QUANTITY_LIMIT_EXCEEDED`, 400 `VALIDATION_ERROR`       |
+| PATCH  | `/carts/:cartId/items/:productId` | 200     | as above, plus 404 `CART_ITEM_NOT_FOUND`                                                                                         |
+| DELETE | `/carts/:cartId/items/:productId` | 200     | 404 `CART_ITEM_NOT_FOUND`, 409 `CART_NOT_OPEN`                                                                                   |
+| GET    | `/carts/:cartId/quote`            | 200     | Read-only preview of totals; query `couponCode?`. 404 `COUPON_NOT_FOUND`, 409 `COUPON_ALREADY_REDEEMED` / `CART_NOT_OPEN`        |
+| GET    | `/rewards`                        | 200     | Public list of available rewards `[{ code, percentOff }]`, best first                                                            |
+| GET    | `/rewards/progress`               | 200     | Orders counted towards the next reward and orders left; restarts when an order unlocks a reward                                  |
+| POST   | `/carts/:cartId/checkout`         | 201/200 | Header `Idempotency-Key` required. Body `{ couponCode?, expectedTotalMinor? }`. See below                                        |
+| GET    | `/orders/:orderId`                | 200     | 404 `ORDER_NOT_FOUND`                                                                                                            |
+| POST   | `/admin/coupons`                  | 201     | Fallback: coupon for a reached milestone that has none. 409 `NO_ELIGIBLE_MILESTONE` (details: `placedOrders`, `nextMilestoneAt`) |
+| GET    | `/admin/coupons`                  | 200     | Paginated; filter `status`                                                                                                       |
+| GET    | `/admin/orders`                   | 200     | Paginated, newest first; filters `from`, `to`, `couponCode`                                                                      |
+| GET    | `/admin/reports/sales`            | 200     | Read-only snapshot                                                                                                               |
 
 **Checkout outcomes**
 
 | Status | Code                                   | Meaning                                                                          |
 | ------ | -------------------------------------- | -------------------------------------------------------------------------------- |
-| 201    |                                        | Order placed                                                                     |
+| 201    |                                        | Order placed; `unlockedReward` is set if this order reached a milestone          |
 | 200    |                                        | Same key and body as an earlier success: same order, `Idempotent-Replayed: true` |
 | 400    | `VALIDATION_ERROR`                     | Missing/short `Idempotency-Key`, malformed body                                  |
 | 402    | `PAYMENT_DECLINED`                     | Payment provider declined; nothing was changed                                   |

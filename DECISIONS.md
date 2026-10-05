@@ -20,19 +20,19 @@ what I chose not to build.
 
 ## 2. Unclear points in the brief, and what I decided
 
-| Question                                          | My decision                                                                                                                                                                                                           |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The price changes after an item is added          | The cart does not store prices. It always shows today's price, and checkout charges today's price. The client can send the total it showed; if the real total differs, checkout stops with `PRICE_CHANGED`.           |
-| Stock changes after an item is added              | Stock is not reserved. Adding to the cart checks stock for quick feedback, but checkout makes the final decision. The cart marks items that are no longer available.                                                  |
-| The same product is added twice                   | The quantities are added together into one line.                                                                                                                                                                      |
-| Removing an item                                  | `DELETE` removes it. Removing something that is not in the cart returns `404`.                                                                                                                                        |
-| Which orders count towards a reward               | Every successful order, including ones that used a coupon. With n = 5, the 5th, 10th, 15th… orders each unlock one reward.                                                                                            |
-| What "generate coupon" does                       | It creates the coupon for the oldest reached milestone that has no coupon yet. Missed milestones are never lost. If nothing is due, it returns `409 NO_ELIGIBLE_MILESTONE` and says how many orders are still needed. |
-| Coupon rules                                      | One use only, any customer can use it (there are no accounts), no expiry, no minimum order, one coupon per order. Codes are not case-sensitive.                                                                       |
-| The coupon percentage changes later               | Existing coupons keep the percentage they were created with.                                                                                                                                                          |
-| A checkout fails and is retried with the same key | Failures are not remembered, so the retry is tried again (stock may be back). Only a successful order is replayed.                                                                                                    |
-| The same key is sent with a different request     | Rejected with `422 IDEMPOTENCY_KEY_REUSED`.                                                                                                                                                                           |
-| Currency and payment                              | Indian rupees, stored in paise. Payment is a fake that always succeeds (decision 8).                                                                                                                                  |
+| Question                                          | My decision                                                                                                                                                                                                                              |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The price changes after an item is added          | The cart does not store prices. It always shows today's price, and checkout charges today's price. The client can send the total it showed; if the real total differs, checkout stops with `PRICE_CHANGED`.                              |
+| Stock changes after an item is added              | Stock is not reserved. Adding to the cart checks stock for quick feedback, but checkout makes the final decision. The cart marks items that are no longer available.                                                                     |
+| The same product is added twice                   | The quantities are added together into one line.                                                                                                                                                                                         |
+| Removing an item                                  | `DELETE` removes it. Removing something that is not in the cart returns `404`.                                                                                                                                                           |
+| Which orders count towards a reward               | Every successful order, including ones that used a coupon. With n = 5, the 5th, 10th, 15th… orders each unlock one reward.                                                                                                               |
+| When the coupon is created                        | Automatically, by the order that reaches the milestone, in the same transaction. The admin "generate coupon" API is kept and creates a coupon for any reached milestone that has none; otherwise it returns `409 NO_ELIGIBLE_MILESTONE`. |
+| Coupon rules                                      | One use only, any customer can use it (there are no accounts), no expiry, no minimum order, one coupon per order. Codes are not case-sensitive.                                                                                          |
+| The coupon percentage changes later               | Existing coupons keep the percentage they were created with.                                                                                                                                                                             |
+| A checkout fails and is retried with the same key | Failures are not remembered, so the retry is tried again (stock may be back). Only a successful order is replayed.                                                                                                                       |
+| The same key is sent with a different request     | Rejected with `422 IDEMPOTENCY_KEY_REUSED`.                                                                                                                                                                                              |
+| Currency and payment                              | Indian rupees, stored in paise. Payment is a fake that always succeeds (decision 8).                                                                                                                                                     |
 
 ## 3. Main decisions
 
@@ -101,25 +101,31 @@ stock for people who never buy.
 **Consequences:** Checkout can fail with `INSUFFICIENT_STOCK`, which lists each item that is short.
 The cart warns about such items before checkout.
 
-### Decision 5: An admin creates coupons, one milestone at a time
+### Decision 5: The order that reaches a milestone creates its coupon
 
-**Context:** The brief says an administrator asks for a coupon, and it is only created if a
-milestone has been reached and not yet rewarded.
+**Context:** Every nth order should unlock a coupon. The brief also asks for an admin API that
+generates the coupon when the condition is met. When I tested it as a shopper, waiting for an admin
+after the 5th order felt broken: the reward should simply arrive.
 
-**Options considered:** create the coupon automatically during the order; let the admin create one
-for the latest milestone; let the admin create one for the oldest unrewarded milestone.
+**Options considered:** only the admin creates coupons; a background job creates them; checkout
+creates the coupon in the same transaction as the order that reaches the milestone.
 
-**Choice:** The admin creates the coupon for the oldest unrewarded milestone.
+**Choice:** Checkout creates it. Order 5 (with n = 5) creates the coupon for milestone 1 and returns
+it on the order as `unlockedReward`. The admin API `POST /admin/coupons` is kept: it creates the
+coupon for the oldest reached milestone that has none (for example orders placed before this
+change), and otherwise returns `409 NO_ELIGIBLE_MILESTONE`.
 
-**Why:** Automatic creation goes against the brief. Rewarding only the latest milestone would lose
-any milestones that were skipped. With a unique index on the milestone, two admins clicking at the
-same time can never create two coupons for the same milestone.
+**Why:** The order and its reward are saved together, so a failed or rolled-back checkout never
+creates a coupon, and a retried checkout gets the same reward back instead of a second one. A
+unique index on the milestone means checkout and the admin API can never create two coupons for the
+same milestone.
 
-**Consequences:** If several milestones have built up, the admin has to create them one by one.
+**Consequences:** Every order at a milestone does one extra write. The admin API is now a fallback
+rather than the normal path.
 
 **Progress tracker:** `GET /rewards/progress` shows how many orders are left until the next
-reward (the shop shows it as "3 orders left to unlock 10% off" with one step per order). It uses the
-same calculation as the admin operation, and it starts again from zero once a reward is generated.
+reward (the shop shows it as "3 orders left to unlock 10% off" with one step per order). It starts
+again from zero when an order unlocks the reward.
 
 ### Decision 6: Store money as whole paise and round discounts down
 
@@ -206,10 +212,11 @@ already supports a `q` filter).
 4. Work out the discount and total, and compare with the total the client expected.
 5. Reduce stock for each item, only if enough is left.
 6. Charge the (fake) payment.
-7. Save the order with its order number and idempotency key.
+7. Save the order with its order number and idempotency key. If this order number reaches a
+   milestone (every nth order), create that milestone's coupon too.
 
-If anything fails, all of these steps are undone: the cart is open again, the coupon is unused and
-the stock is unchanged.
+If anything fails, all of these steps are undone: the cart is open again, the coupon is unused, the
+stock is unchanged and no new reward is created.
 
 **Example: two people buy the last unit.** Both see stock = 1. The first one's update saves. When
 the second one tries, MongoDB sees the record has changed and retries it with fresh data. Now stock
@@ -221,7 +228,7 @@ is 0, so the second checkout fails with `INSUFFICIENT_STOCK`. One order, stock 0
 | Different checkouts of the same cart    | One succeeds; the others get `CART_ALREADY_CHECKED_OUT`                         |
 | Different carts use the same coupon     | One succeeds; the others get `COUPON_ALREADY_REDEEMED` and nothing else changes |
 | Many carts buy the last few units       | Exactly as many succeed as there are units; the rest get `INSUFFICIENT_STOCK`   |
-| Two admins create coupons at once       | Never two coupons for the same milestone                                        |
+| Many orders reach milestones at once    | Exactly one coupon per milestone, even with admin generation at the same time   |
 | A cart is edited during its checkout    | One goes first; a late edit gets `CART_NOT_OPEN`                                |
 
 All of these have tests that run against a real MongoDB replica set.
@@ -251,15 +258,15 @@ out of stock). The HTTP status tells the client who can fix it:
 ## 7. What is built and what is left out
 
 **Backend:** products with seed data; carts; idempotent checkout in one transaction; coupons with
-milestones and admin generation; progress towards the next reward; checkout quote and public
+milestones, created automatically by the order that reaches them (admin generation kept as
+a fallback); progress towards the next reward; checkout quote and public
 rewards list; order snapshots; admin order list; sales report; paginated lists; OpenAPI docs; Docker setup;
 tests for concurrency, retries, coupons, quotes, the report, carts and money.
 
 **Client (optional in the brief):** a small shop that shows the backend working: search and
 filters, cart with quantity controls, checkout with coupons and a confirmed discount, order
-receipt, a "N orders left" reward tracker, and a Rewards page with an admin "Generate reward"
-button. Tested with unit tests and
-Playwright browser tests.
+receipt that shows a newly unlocked reward, a "N orders left" reward tracker, and a Rewards page.
+Tested with unit tests and Playwright browser tests.
 
 **Left out on purpose:** login and permissions (admin routes are only separated by their path);
 coupon expiry and minimum order values; stock reservations; real payments; expiry of idempotency
@@ -303,9 +310,9 @@ Examples where I redirected the AI's output:
 - A UI spec I used asked for a "points" system the backend does not have. When the AI flagged
   this, I chose to show rewards as the real coupons the backend issues, so the UI never promises a
   discount the API would not give.
-- After testing, I found it was not clear when a reward would arrive. I kept the assignment's rule
-  (an admin generates it) and added a "Generate reward" button and a progress tracker ("3 orders
-  left"), instead of creating rewards automatically.
+- After testing, I found it was not clear when a reward would arrive. I made the order that reaches
+  the milestone create the reward automatically (shown on the order confirmation), added a progress
+  tracker ("3 orders left"), and kept the admin API from the brief as a fallback.
 - From my UX review: the Add to cart button moved off the product photo, the quantity stepper
   became compact, minus on the last unit now removes the item, and reward codes are confirmed
   (with the exact saving) before the order is placed.

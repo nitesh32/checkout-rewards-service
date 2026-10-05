@@ -65,12 +65,13 @@ DELETE {{baseUrl}}/carts/{{cartId}}/items/{{productId}}
 
 ### ---- Administrative operations ----
 
-### Generate a coupon for the earliest unrewarded milestone (409 NO_ELIGIBLE_MILESTONE if none)
-# @name generateCoupon
+### Fallback: generate a coupon for a reached milestone that has none (409 NO_ELIGIBLE_MILESTONE if none)
+# Checkout already creates the coupon with the order that reaches each milestone.
 POST {{baseUrl}}/admin/coupons
 
 ###
-@couponCode = {{generateCoupon.response.body.code}}
+# A code from GET /rewards, or the unlockedReward of the order that reached a milestone
+@couponCode = SAVE-ABCDEFGH
 
 ### Check out with a coupon, and with a price guard: PRICE_CHANGED if the total differs
 POST {{baseUrl}}/carts/{{cartId}}/checkout
