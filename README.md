@@ -36,10 +36,23 @@ npm run dev                      # seeds 6 products on start (idempotent)
 | ------------------------- | -------------------------------------------------- | -------------------------------- |
 | `PORT`                    | `3000`                                             |                                  |
 | `MONGO_URI`               | `mongodb://localhost:27017/?directConnection=true` |                                  |
-| `REWARD_EVERY_N_ORDERS`   | `5`                                                | `n`: one coupon per n-th order   |
+| `REWARD_EVERY_N_ORDERS`   | `5` (Docker and `.env.example` set `1`)            | `n`: one coupon per n-th order   |
 | `REWARD_DISCOUNT_PERCENT` | `10`                                               | `x`: percent off for each coupon |
 
 Seed data: 6 premium-electronics products (speaker, earbuds, headphones, phone, smartwatch, camera), including `CAMERA-MIRRORLESS` with only **3** units in stock. Seeding only adds missing SKUs, so run `make reset` to replace an existing database.
+
+## Try the rewards in two minutes
+
+The Docker setup uses `n = 1`, so every order unlocks a reward. Rewards are created on request by
+an administrator, as the assignment specifies; they are never generated automatically.
+
+1. `make up`, open http://localhost:5173, add a product and place an order.
+2. Open **Rewards** and press **Generate reward** (the admin operation `POST /admin/coupons`).
+   Before any order is placed it explains how many orders are still needed.
+3. Add a product again: checkout now suggests the reward with its exact saving. Apply it (or use
+   **Use at checkout** on the Rewards page) and place the order.
+4. `GET /admin/reports/sales` (Swagger at http://localhost:3000/docs) shows the discount and the
+   coupon counts.
 
 ## Product photos
 

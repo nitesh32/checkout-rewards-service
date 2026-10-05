@@ -74,6 +74,22 @@ export async function generateCoupon({ collections, rewards }: AppContext): Prom
   }
 }
 
+/**
+ * Creates every reward that is due (normally one), reusing the admin operation so the milestone
+ * rules and the concurrency guarantees are exactly the same. Used when auto-generation is on.
+ */
+export async function generateDueRewards(context: AppContext): Promise<CouponDto[]> {
+  const created: CouponDto[] = [];
+  for (;;) {
+    try {
+      created.push(await generateCoupon(context));
+    } catch (error) {
+      if (error instanceof AppError && error.code === 'NO_ELIGIBLE_MILESTONE') return created;
+      throw error;
+    }
+  }
+}
+
 /** Newest first. */
 export async function listCoupons(
   { collections }: AppContext,

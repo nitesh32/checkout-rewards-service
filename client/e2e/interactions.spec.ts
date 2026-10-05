@@ -57,10 +57,15 @@ function readControls(page: Page): Promise<ControlInfo[]> {
 /** Makes sure the product is in the cart: clicks Add, unless its card already shows the quantity stepper. */
 async function addProductToCart(page: Page, productName: string): Promise<void> {
   await page.goto('/products');
-  const card = page.getByRole('listitem').filter({ hasText: productName });
+  // Scoped to <main> because toasts are list items too.
+  const card = page.locator('main').getByRole('listitem').filter({ hasText: productName });
+  // Wait for the card's control first: count() does not wait, so it could run before the
+  // products have loaded and wrongly conclude there is no Add button.
   const add = card.getByRole('button', { name: /Add to cart/ });
-  if (await add.count()) await add.click();
-  await expect(card.getByRole('group', { name: /Quantity of/ })).toBeVisible();
+  const stepper = card.getByRole('group', { name: /Quantity of/ });
+  await expect(add.or(stepper)).toBeVisible();
+  if (await add.isVisible()) await add.click();
+  await expect(stepper).toBeVisible();
 }
 
 /** The pages and states a shopper sees; each callback leaves the page showing that screen. */

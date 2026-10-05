@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { buttonClasses } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { GenerateRewardPanel } from './GenerateRewardPanel';
 import { RewardCode } from './RewardCode';
 import { useAvailableRewards } from './rewardsApi';
 
@@ -20,6 +21,8 @@ export function RewardsPage() {
           next order. Enter one at checkout.
         </p>
       </div>
+
+      <GenerateRewardPanel />
 
       {rewards.isLoading && (
         <div className="flex flex-col gap-3" aria-label="Loading rewards">

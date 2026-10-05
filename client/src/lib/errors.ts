@@ -51,6 +51,10 @@ const ERROR_COPY: Record<string, ErrorCopy> = {
     title: 'Checkout already in progress',
     description: 'Reload the page and try again.',
   },
+  NO_ELIGIBLE_MILESTONE: {
+    title: 'No reward due yet',
+    description: 'Place more orders to unlock the next reward.',
+  },
   PAYMENT_DECLINED: {
     title: 'Payment declined',
     description: 'Your payment was not accepted. Nothing was charged.',
@@ -130,6 +134,22 @@ export const stockShortagesOf = (error: unknown): StockShortage[] | null =>
 
 export const priceChangeOf = (error: unknown): PriceChange | null =>
   detailsOf(error, 'PRICE_CHANGED', isPriceChange);
+
+export interface MilestoneProgress {
+  placedOrders: number;
+  nextMilestoneAt: number;
+}
+
+function isMilestoneProgress(value: unknown): value is MilestoneProgress {
+  return (
+    isRecord(value) &&
+    typeof value['placedOrders'] === 'number' &&
+    typeof value['nextMilestoneAt'] === 'number'
+  );
+}
+
+export const milestoneProgressOf = (error: unknown): MilestoneProgress | null =>
+  detailsOf(error, 'NO_ELIGIBLE_MILESTONE', isMilestoneProgress);
 
 export function existingOrderIdOf(error: unknown): string | null {
   const details =

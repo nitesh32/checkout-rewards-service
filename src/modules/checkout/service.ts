@@ -6,6 +6,7 @@ import { isDuplicateKeyError, withTransaction } from '../../db/client.js';
 import { AppError } from '../../shared/errors.js';
 import { CURRENCY, calculateDiscountMinor, sumMinor } from '../../shared/money.js';
 import { priceCartItems, productIdsOf, type PricedLine } from '../carts/pricing.js';
+import { generateDueRewards } from '../coupons/service.js';
 import { findProductsById, toStockShortage } from '../products/service.js';
 import type { CheckoutBody } from './schemas.js';
 
@@ -230,6 +231,10 @@ export async function placeOrder(
     const order = await withTransaction(context.client, (session) =>
       createOrder(context, request, requestHash, session),
     );
+    // After the order has committed, so the order count it reads includes this order. Replays
+    // skip this: the original request already did it. If it fails, the order still stands and a
+    // retry with the same key replays it; the reward stays due for the admin operation.
+    if (context.rewards.autoGenerate) await generateDueRewards(context);
     return { order, isReplay: false };
   } catch (error) {
     if (!mayBeLostRace(error)) throw error;
