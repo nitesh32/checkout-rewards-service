@@ -36,6 +36,8 @@ services:
       # 1 so every order unlocks a reward and the flow is quick to try; the assignment's example is 5.
       REWARD_EVERY_N_ORDERS: 1
       REWARD_DISCOUNT_PERCENT: 10
+      # Create the reward as soon as an order reaches a milestone (off by default).
+      REWARD_AUTO_GENERATE: 'true'
 
   client:
     build: ./client

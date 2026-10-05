@@ -200,3 +200,53 @@ describe('100% coupon', () => {
     }
   });
 });
+
+describe('automatic reward generation (REWARD_AUTO_GENERATE)', () => {
+  const rewardCount = (testApp: TestApp) => testApp.context.collections.coupons.countDocuments();
+
+  it('creates the reward when an order reaches a milestone, once, even if the order is replayed', async () => {
+    const testApp = await createTestApp({
+      rewards: { everyNOrders: 2, discountPercent: 10, autoGenerate: true },
+    });
+    try {
+      const productId = await insertProduct(testApp, {
+        sku: 'AUTO',
+        unitPriceMinor: 100,
+        stock: 50,
+      });
+
+      await placeOrders(testApp, productId, 1);
+      expect(await rewardCount(testApp)).toBe(0); // 1 order: milestone 1 (order 2) not reached
+
+      const cartId = await createCartWith(testApp, [{ productId, quantity: 1 }]);
+      const key = 'auto-generate-milestone-order';
+      expect((await checkout(testApp, cartId, { key })).statusCode).toBe(201);
+      expect(await rewardCount(testApp)).toBe(1);
+
+      expect((await checkout(testApp, cartId, { key })).statusCode).toBe(200); // replay
+      expect(await rewardCount(testApp)).toBe(1);
+
+      // The admin operation still works and agrees that nothing more is due.
+      expect(errorCodeOf(await generateCoupon(testApp))).toBe('NO_ELIGIBLE_MILESTONE');
+    } finally {
+      await testApp.close();
+    }
+  });
+
+  it('is off by default: orders alone create no reward', async () => {
+    const testApp = await createTestApp({ rewards: { everyNOrders: 1, discountPercent: 10 } });
+    try {
+      const productId = await insertProduct(testApp, {
+        sku: 'MANUAL',
+        unitPriceMinor: 100,
+        stock: 50,
+      });
+
+      await placeOrders(testApp, productId, 2);
+
+      expect(await rewardCount(testApp)).toBe(0);
+    } finally {
+      await testApp.close();
+    }
+  });
+});

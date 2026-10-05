@@ -134,6 +134,15 @@ never over-grant.
 **Consequences:** If five milestones accumulate, five calls are needed. `placedOrders` comes from a
 single counter document incremented in the order transaction.
 
+**Later addition: optional auto-generation.** For demos, `REWARD_AUTO_GENERATE=true` makes an order
+that reaches a milestone create its reward immediately, by calling the same admin operation
+(`generateDueRewards` loops `generateCoupon` until nothing is due) after the order commits. It is
+off by default, so the assignment's behaviour is unchanged, and the admin endpoint still works
+either way. It runs after the commit rather than inside the order transaction, because it must
+see the order just placed and must never roll back a successful order. A replayed request does not
+run it again. If it fails, the order still stands, a retry with the same key replays it, and the
+reward stays due for the admin operation.
+
 ### Decision 6: Integer minor units and floor rounding
 
 **Context:** Money must not suffer floating-point errors, and discounts must be deterministic and
