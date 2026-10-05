@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+*.log
+.kilo
+
+# Local before/after screenshots; regenerate with client/scripts/captureScreenshots.mjs
+docs/screenshots/

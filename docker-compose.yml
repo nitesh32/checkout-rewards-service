@@ -1,0 +1,49 @@
+services:
+  mongo:
+    image: mongo:7
+    # Transactions need a replica set, so even a single node runs as rs0.
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # Initiates the replica set on first start; healthy only once this node is primary.
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - >-
+          try { rs.status() } catch (e) {
+          rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }) }
+          quit(db.hello().isWritablePrimary ? 0 : 1)
+      interval: 3s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  api:
+    build: .
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+    environment:
+      PORT: 3000
+      MONGO_URI: mongodb://mongo:27017/?replicaSet=rs0
+      REWARD_EVERY_N_ORDERS: 5
+      REWARD_DISCOUNT_PERCENT: 10
+
+  client:
+    build: ./client
+    depends_on:
+      - api
+    ports:
+      - '5173:5173'
+    environment:
+      API_URL: http://api:3000
+
+volumes:
+  mongo-data:

@@ -1,0 +1,3020 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Checkout & Rewards Service",
+    "version": "1.0.0",
+    "description": "Routes under /admin are administrative; authentication is out of scope."
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/products": {
+      "get": {
+        "summary": "List products (cursor paginated)",
+        "tags": [
+          "Products"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "description": "Opaque cursor from a previous page"
+          },
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 100,
+              "type": "string"
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Name contains"
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "inStock",
+            "required": false,
+            "description": "Only products with stock > 0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "nextCursor"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "sku",
+                          "name",
+                          "unitPriceMinor",
+                          "currency",
+                          "stock",
+                          "updatedAt"
+                        ],
+                        "properties": {
+                          "id": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "stock": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{productId}": {
+      "get": {
+        "summary": "Get a product",
+        "tags": [
+          "Products"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "productId",
+            "required": true,
+            "description": "ObjectId hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "sku",
+                    "name",
+                    "unitPriceMinor",
+                    "currency",
+                    "stock",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "sku": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "unitPriceMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "stock": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carts": {
+      "post": {
+        "summary": "Create an empty cart",
+        "tags": [
+          "Carts"
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "status",
+                    "orderId",
+                    "lines",
+                    "subtotalMinor",
+                    "currency",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "OPEN"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "CHECKED_OUT"
+                          ]
+                        }
+                      ]
+                    },
+                    "orderId": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "productId",
+                          "sku",
+                          "name",
+                          "unitPriceMinor",
+                          "quantity",
+                          "lineTotalMinor",
+                          "availableStock",
+                          "isPurchasable"
+                        ],
+                        "properties": {
+                          "productId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "quantity": {
+                            "minimum": 1,
+                            "maximum": 100,
+                            "type": "integer"
+                          },
+                          "lineTotalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "availableStock": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "isPurchasable": {
+                            "description": "False when current stock is below the quantity",
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carts/{cartId}": {
+      "get": {
+        "summary": "View a cart with live prices, totals and per-line availability",
+        "tags": [
+          "Carts"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "cartId",
+            "required": true,
+            "description": "ObjectId hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "status",
+                    "orderId",
+                    "lines",
+                    "subtotalMinor",
+                    "currency",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "OPEN"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "CHECKED_OUT"
+                          ]
+                        }
+                      ]
+                    },
+                    "orderId": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "productId",
+                          "sku",
+                          "name",
+                          "unitPriceMinor",
+                          "quantity",
+                          "lineTotalMinor",
+                          "availableStock",
+                          "isPurchasable"
+                        ],
+                        "properties": {
+                          "productId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "quantity": {
+                            "minimum": 1,
+                            "maximum": 100,
+                            "type": "integer"
+                          },
+                          "lineTotalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "availableStock": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "isPurchasable": {
+                            "description": "False when current stock is below the quantity",
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carts/{cartId}/items": {
+      "post": {
+        "summary": "Add a product (merges into an existing line)",
+        "tags": [
+          "Carts"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "productId",
+                  "quantity"
+                ],
+                "properties": {
+                  "productId": {
+                    "pattern": "^[a-f0-9]{24}$",
+                    "description": "ObjectId hex",
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "minimum": 1,
+                    "maximum": 100,
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "cartId",
+            "required": true,
+            "description": "ObjectId hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "status",
+                    "orderId",
+                    "lines",
+                    "subtotalMinor",
+                    "currency",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "OPEN"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "CHECKED_OUT"
+                          ]
+                        }
+                      ]
+                    },
+                    "orderId": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "productId",
+                          "sku",
+                          "name",
+                          "unitPriceMinor",
+                          "quantity",
+                          "lineTotalMinor",
+                          "availableStock",
+                          "isPurchasable"
+                        ],
+                        "properties": {
+                          "productId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "quantity": {
+                            "minimum": 1,
+                            "maximum": 100,
+                            "type": "integer"
+                          },
+                          "lineTotalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "availableStock": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "isPurchasable": {
+                            "description": "False when current stock is below the quantity",
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carts/{cartId}/items/{productId}": {
+      "patch": {
+        "summary": "Set the absolute quantity of a line",
+        "tags": [
+          "Carts"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "quantity"
+                ],
+                "properties": {
+                  "quantity": {
+                    "minimum": 1,
+                    "maximum": 100,
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "cartId",
+            "required": true,
+            "description": "ObjectId hex"
+          },
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "productId",
+            "required": true,
+            "description": "ObjectId hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "status",
+                    "orderId",
+                    "lines",
+                    "subtotalMinor",
+                    "currency",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "OPEN"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "CHECKED_OUT"
+                          ]
+                        }
+                      ]
+                    },
+                    "orderId": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "productId",
+                          "sku",
+                          "name",
+                          "unitPriceMinor",
+                          "quantity",
+                          "lineTotalMinor",
+                          "availableStock",
+                          "isPurchasable"
+                        ],
+                        "properties": {
+                          "productId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "quantity": {
+                            "minimum": 1,
+                            "maximum": 100,
+                            "type": "integer"
+                          },
+                          "lineTotalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "availableStock": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "isPurchasable": {
+                            "description": "False when current stock is below the quantity",
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a line (404 if the product is not in the cart)",
+        "tags": [
+          "Carts"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "cartId",
+            "required": true,
+            "description": "ObjectId hex"
+          },
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "productId",
+            "required": true,
+            "description": "ObjectId hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "status",
+                    "orderId",
+                    "lines",
+                    "subtotalMinor",
+                    "currency",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "OPEN"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "CHECKED_OUT"
+                          ]
+                        }
+                      ]
+                    },
+                    "orderId": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "productId",
+                          "sku",
+                          "name",
+                          "unitPriceMinor",
+                          "quantity",
+                          "lineTotalMinor",
+                          "availableStock",
+                          "isPurchasable"
+                        ],
+                        "properties": {
+                          "productId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "quantity": {
+                            "minimum": 1,
+                            "maximum": 100,
+                            "type": "integer"
+                          },
+                          "lineTotalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "availableStock": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "isPurchasable": {
+                            "description": "False when current stock is below the quantity",
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carts/{cartId}/quote": {
+      "get": {
+        "summary": "Preview the totals, optionally with a reward code (read-only)",
+        "tags": [
+          "Checkout"
+        ],
+        "description": "Validates the code and returns what checkout would charge now. Nothing is redeemed; placing the order re-checks the code and the prices.",
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            },
+            "in": "query",
+            "name": "couponCode",
+            "required": false
+          },
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "cartId",
+            "required": true,
+            "description": "ObjectId hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "subtotalMinor",
+                    "discountMinor",
+                    "totalMinor",
+                    "currency",
+                    "coupon"
+                  ],
+                  "properties": {
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "discountMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "totalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "coupon": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "percentOff"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "percentOff": {
+                          "type": "integer"
+                        }
+                      },
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carts/{cartId}/checkout": {
+      "post": {
+        "summary": "Check out a cart (idempotent)",
+        "tags": [
+          "Checkout"
+        ],
+        "description": "201 on first success. A retry with the same Idempotency-Key and body returns 200 with the same order and an `Idempotent-Replayed: true` header.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "couponCode": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "expectedTotalMinor": {
+                    "minimum": 0,
+                    "description": "If set and the computed total differs, checkout fails with PRICE_CHANGED",
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "cartId",
+            "required": true,
+            "description": "ObjectId hex"
+          },
+          {
+            "schema": {
+              "minLength": 8,
+              "maxLength": 128,
+              "type": "string"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Client-generated key (e.g. a UUID). Reuse it when retrying the same checkout."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "orderNumber",
+                    "cartId",
+                    "status",
+                    "items",
+                    "subtotalMinor",
+                    "discountMinor",
+                    "totalMinor",
+                    "currency",
+                    "coupon",
+                    "payment",
+                    "placedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "orderNumber": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "cartId": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "PLACED"
+                      ]
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "productId",
+                          "sku",
+                          "name",
+                          "unitPriceMinor",
+                          "quantity",
+                          "lineTotalMinor"
+                        ],
+                        "properties": {
+                          "productId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "quantity": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "lineTotalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "discountMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "totalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "coupon": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "percentOff"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "percentOff": {
+                          "type": "integer"
+                        }
+                      },
+                      "nullable": true
+                    },
+                    "payment": {
+                      "type": "object",
+                      "required": [
+                        "provider",
+                        "status"
+                      ],
+                      "properties": {
+                        "provider": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SUCCEEDED"
+                          ]
+                        }
+                      }
+                    },
+                    "placedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "orderNumber",
+                    "cartId",
+                    "status",
+                    "items",
+                    "subtotalMinor",
+                    "discountMinor",
+                    "totalMinor",
+                    "currency",
+                    "coupon",
+                    "payment",
+                    "placedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "orderNumber": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "cartId": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "PLACED"
+                      ]
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "productId",
+                          "sku",
+                          "name",
+                          "unitPriceMinor",
+                          "quantity",
+                          "lineTotalMinor"
+                        ],
+                        "properties": {
+                          "productId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "quantity": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "lineTotalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "discountMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "totalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "coupon": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "percentOff"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "percentOff": {
+                          "type": "integer"
+                        }
+                      },
+                      "nullable": true
+                    },
+                    "payment": {
+                      "type": "object",
+                      "required": [
+                        "provider",
+                        "status"
+                      ],
+                      "properties": {
+                        "provider": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SUCCEEDED"
+                          ]
+                        }
+                      }
+                    },
+                    "placedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{orderId}": {
+      "get": {
+        "summary": "Get an order snapshot",
+        "tags": [
+          "Orders"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "description": "ObjectId hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "orderNumber",
+                    "cartId",
+                    "status",
+                    "items",
+                    "subtotalMinor",
+                    "discountMinor",
+                    "totalMinor",
+                    "currency",
+                    "coupon",
+                    "payment",
+                    "placedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "orderNumber": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "cartId": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "PLACED"
+                      ]
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "productId",
+                          "sku",
+                          "name",
+                          "unitPriceMinor",
+                          "quantity",
+                          "lineTotalMinor"
+                        ],
+                        "properties": {
+                          "productId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "unitPriceMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "quantity": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "lineTotalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "discountMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "totalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "coupon": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "percentOff"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "percentOff": {
+                          "type": "integer"
+                        }
+                      },
+                      "nullable": true
+                    },
+                    "payment": {
+                      "type": "object",
+                      "required": [
+                        "provider",
+                        "status"
+                      ],
+                      "properties": {
+                        "provider": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "SUCCEEDED"
+                          ]
+                        }
+                      }
+                    },
+                    "placedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders": {
+      "get": {
+        "summary": "List orders, newest first (admin)",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "description": "Opaque cursor from a previous page"
+          },
+          {
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false
+          },
+          {
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false
+          },
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            },
+            "in": "query",
+            "name": "couponCode",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "nextCursor"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "orderNumber",
+                          "cartId",
+                          "status",
+                          "items",
+                          "subtotalMinor",
+                          "discountMinor",
+                          "totalMinor",
+                          "currency",
+                          "coupon",
+                          "payment",
+                          "placedAt"
+                        ],
+                        "properties": {
+                          "id": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "orderNumber": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "cartId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "PLACED"
+                            ]
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "productId",
+                                "sku",
+                                "name",
+                                "unitPriceMinor",
+                                "quantity",
+                                "lineTotalMinor"
+                              ],
+                              "properties": {
+                                "productId": {
+                                  "pattern": "^[a-f0-9]{24}$",
+                                  "description": "ObjectId hex",
+                                  "type": "string"
+                                },
+                                "sku": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "unitPriceMinor": {
+                                  "minimum": 0,
+                                  "description": "Amount in minor units (paise)",
+                                  "type": "integer"
+                                },
+                                "quantity": {
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                "lineTotalMinor": {
+                                  "minimum": 0,
+                                  "description": "Amount in minor units (paise)",
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          },
+                          "subtotalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "discountMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "totalMinor": {
+                            "minimum": 0,
+                            "description": "Amount in minor units (paise)",
+                            "type": "integer"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "coupon": {
+                            "type": "object",
+                            "required": [
+                              "code",
+                              "percentOff"
+                            ],
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "percentOff": {
+                                "type": "integer"
+                              }
+                            },
+                            "nullable": true
+                          },
+                          "payment": {
+                            "type": "object",
+                            "required": [
+                              "provider",
+                              "status"
+                            ],
+                            "properties": {
+                              "provider": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "SUCCEEDED"
+                                ]
+                              }
+                            }
+                          },
+                          "placedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/coupons": {
+      "post": {
+        "summary": "Generate the coupon for the earliest eligible, unrewarded milestone",
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "code",
+                    "percentOff",
+                    "milestone",
+                    "status",
+                    "redeemedByOrderId",
+                    "generatedAt",
+                    "redeemedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "percentOff": {
+                      "minimum": 1,
+                      "maximum": 100,
+                      "type": "integer"
+                    },
+                    "milestone": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "AVAILABLE"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "REDEEMED"
+                          ]
+                        }
+                      ]
+                    },
+                    "redeemedByOrderId": {
+                      "pattern": "^[a-f0-9]{24}$",
+                      "description": "ObjectId hex",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "generatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "redeemedAt": {
+                      "format": "date-time",
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List coupons, newest first (admin)",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "description": "Opaque cursor from a previous page"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "AVAILABLE"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "REDEEMED"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "nextCursor"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "code",
+                          "percentOff",
+                          "milestone",
+                          "status",
+                          "redeemedByOrderId",
+                          "generatedAt",
+                          "redeemedAt"
+                        ],
+                        "properties": {
+                          "id": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "percentOff": {
+                            "minimum": 1,
+                            "maximum": 100,
+                            "type": "integer"
+                          },
+                          "milestone": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "status": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "AVAILABLE"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "REDEEMED"
+                                ]
+                              }
+                            ]
+                          },
+                          "redeemedByOrderId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "generatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "redeemedAt": {
+                            "format": "date-time",
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rewards": {
+      "get": {
+        "summary": "Rewards any shopper can use right now, best first",
+        "tags": [
+          "Rewards"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "code",
+                      "percentOff"
+                    ],
+                    "properties": {
+                      "code": {
+                        "type": "string"
+                      },
+                      "percentOff": {
+                        "minimum": 1,
+                        "maximum": 100,
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reports/sales": {
+      "get": {
+        "summary": "Sales and coupon summary (read-only, consistent snapshot)",
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "currency",
+                    "totalOrders",
+                    "itemsSold",
+                    "grossRevenueMinor",
+                    "totalDiscountMinor",
+                    "netRevenueMinor",
+                    "coupons",
+                    "generatedAt"
+                  ],
+                  "properties": {
+                    "currency": {
+                      "type": "string"
+                    },
+                    "totalOrders": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "itemsSold": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "productId",
+                          "sku",
+                          "name",
+                          "quantity"
+                        ],
+                        "properties": {
+                          "productId": {
+                            "pattern": "^[a-f0-9]{24}$",
+                            "description": "ObjectId hex",
+                            "type": "string"
+                          },
+                          "sku": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "quantity": {
+                            "minimum": 1,
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "grossRevenueMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "totalDiscountMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "netRevenueMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "coupons": {
+                      "type": "object",
+                      "required": [
+                        "generated",
+                        "available",
+                        "redeemed"
+                      ],
+                      "properties": {
+                        "generated": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "available": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "redeemed": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "generatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
