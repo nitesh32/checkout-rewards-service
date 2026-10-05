@@ -108,6 +108,17 @@ export async function placeOrders(
   }
 }
 
+/** Places single-unit orders until one reaches a milestone, and returns the reward it unlocked. */
+export async function earnReward(testApp: TestApp, productId: string): Promise<string> {
+  for (;;) {
+    const cartId = await createCartWith(testApp, [{ productId, quantity: 1 }]);
+    const response = await checkout(testApp, cartId);
+    if (response.statusCode !== 201) throw new Error(`Setup checkout failed: ${response.body}`);
+    const { unlockedReward } = response.json<{ unlockedReward: { code: string } | null }>();
+    if (unlockedReward) return unlockedReward.code;
+  }
+}
+
 export async function generateCoupon({ app }: TestApp) {
   return app.inject({ method: 'POST', url: '/admin/coupons' });
 }

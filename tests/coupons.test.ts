@@ -4,6 +4,7 @@ import {
   checkout,
   createCartWith,
   createTestApp,
+  earnReward,
   errorCodeOf,
   generateCoupon,
   insertProduct,
@@ -20,7 +21,12 @@ interface CouponBody {
   status: string;
 }
 
-describe('coupon milestones (n = 2, x = 10)', () => {
+interface OrderBody {
+  id: string;
+  unlockedReward: { code: string; percentOff: number } | null;
+}
+
+describe('rewards unlocked by orders (n = 2, x = 10)', () => {
   let testApp: TestApp;
   let productId: string;
   beforeAll(async () => {
@@ -33,36 +39,100 @@ describe('coupon milestones (n = 2, x = 10)', () => {
   });
   afterAll(() => testApp.close());
 
-  it('refuses to generate before the first milestone is reached', async () => {
-    await placeOrders(testApp, productId, 1);
+  const orderOne = async (key?: string) =>
+    checkout(testApp, await createCartWith(testApp, [{ productId, quantity: 1 }]), { key });
+
+  it('creates the coupon with the order that reaches the milestone, and not before', async () => {
+    const first = await orderOne();
+    expect(first.json<OrderBody>().unlockedReward).toBeNull();
+    expect(await testApp.context.collections.coupons.countDocuments()).toBe(0);
+
+    const second = await orderOne();
+
+    const { unlockedReward, id } = second.json<OrderBody>();
+    expect(unlockedReward).toMatchObject({ percentOff: 10 });
+    const coupon = await testApp.context.collections.coupons.findOne({});
+    expect(coupon).toMatchObject({ code: unlockedReward?.code, milestone: 1, status: 'AVAILABLE' });
+    const stored = await testApp.app.inject({ method: 'GET', url: `/orders/${id}` });
+    expect(stored.json<OrderBody>().unlockedReward).toEqual(unlockedReward);
+  });
+
+  it('a failed checkout at a milestone creates no coupon', async () => {
+    await orderOne(); // 3 orders: the next one reaches milestone 2
+    const cartId = await createCartWith(testApp, [{ productId, quantity: 1 }]);
+    await testApp.context.collections.products.updateOne(
+      { _id: new ObjectId(productId) },
+      { $set: { stock: 0 } },
+    );
+
+    const failed = await checkout(testApp, cartId);
+    await testApp.context.collections.products.updateOne(
+      { _id: new ObjectId(productId) },
+      { $set: { stock: 1_000 } },
+    );
+
+    expect(errorCodeOf(failed)).toBe('INSUFFICIENT_STOCK');
+    expect(await testApp.context.collections.coupons.countDocuments()).toBe(1);
+    expect((await orderOne()).json<OrderBody>().unlockedReward).not.toBeNull();
+    expect(await testApp.context.collections.coupons.countDocuments()).toBe(2);
+  });
+
+  it('a retried checkout replays the same reward instead of creating another', async () => {
+    await orderOne(); // 5 orders: the next one reaches milestone 3
+    const cartId = await createCartWith(testApp, [{ productId, quantity: 1 }]);
+
+    const first = await checkout(testApp, cartId, { key: 'milestone-retry-key' });
+    const retry = await checkout(testApp, cartId, { key: 'milestone-retry-key' });
+
+    expect(retry.statusCode).toBe(200);
+    expect(retry.json<OrderBody>().unlockedReward).toEqual(first.json<OrderBody>().unlockedReward);
+    expect(await testApp.context.collections.coupons.countDocuments()).toBe(3);
+  });
+
+  it('creates exactly one coupon per milestone under concurrent checkouts', async () => {
+    const carts = await Promise.all(
+      Array.from({ length: 8 }, () => createCartWith(testApp, [{ productId, quantity: 1 }])),
+    );
+
+    const responses = await Promise.all(carts.map((cartId) => checkout(testApp, cartId)));
+
+    expect(statusCounts(responses)).toEqual({ 201: 8 });
+    const unlocked = responses.filter((r) => r.json<OrderBody>().unlockedReward !== null);
+    expect(unlocked).toHaveLength(4); // orders 7 to 14 reach milestones 4 to 7
+    const milestones = await testApp.context.collections.coupons.distinct('milestone');
+    expect(milestones.sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+});
+
+describe('admin generation catches up milestones without a coupon (n = 2)', () => {
+  let testApp: TestApp;
+  let productId: string;
+  beforeAll(async () => {
+    testApp = await createTestApp({ rewards: { everyNOrders: 2, discountPercent: 10 } });
+    productId = await insertProduct(testApp, { sku: 'CATCH-UP', unitPriceMinor: 100, stock: 100 });
+  });
+  afterAll(() => testApp.close());
+
+  /** Like orders placed before rewards were automatic: milestones reached, coupons missing. */
+  const forgetCouponsFrom = (milestone: number) =>
+    testApp.context.collections.coupons.deleteMany({ milestone: { $gte: milestone } });
+
+  it('has nothing to do while every reached milestone has its coupon', async () => {
+    await placeOrders(testApp, productId, 3);
 
     const response = await generateCoupon(testApp);
 
     expect(response.statusCode).toBe(409);
     expect(errorCodeOf(response)).toBe('NO_ELIGIBLE_MILESTONE');
     expect(response.json<{ error: { details: unknown } }>().error.details).toEqual({
-      placedOrders: 1,
-      nextMilestoneAt: 2,
+      placedOrders: 3,
+      nextMilestoneAt: 4,
     });
   });
 
-  it('generates one coupon at the milestone and not a second for the same milestone', async () => {
-    await placeOrders(testApp, productId, 1); // 2 orders placed in total
-
-    const first = await generateCoupon(testApp);
-    const second = await generateCoupon(testApp);
-
-    expect(first.statusCode).toBe(201);
-    expect(first.json<CouponBody>()).toMatchObject({
-      milestone: 1,
-      percentOff: 10,
-      status: 'AVAILABLE',
-    });
-    expect(second.statusCode).toBe(409);
-  });
-
-  it('does not lose milestones that were passed: they are generated one per call', async () => {
-    await placeOrders(testApp, productId, 4); // 6 orders: milestones 2 and 3 are now reached
+  it('generates missing milestones one per call', async () => {
+    await placeOrders(testApp, productId, 3); // 6 orders: milestones 1 to 3 have coupons
+    await forgetCouponsFrom(2);
 
     const responses = [
       await generateCoupon(testApp),
@@ -74,8 +144,8 @@ describe('coupon milestones (n = 2, x = 10)', () => {
     expect(responses.slice(0, 2).map((r) => r.json<CouponBody>().milestone)).toEqual([2, 3]);
   });
 
-  it('creates exactly one coupon per milestone under concurrent generation', async () => {
-    await placeOrders(testApp, productId, 4); // 10 orders: milestones 4 and 5 are now reached
+  it('creates exactly one coupon per missing milestone under concurrent generation', async () => {
+    await forgetCouponsFrom(2);
 
     const responses = await Promise.all(Array.from({ length: 6 }, () => generateCoupon(testApp)));
 
@@ -83,8 +153,8 @@ describe('coupon milestones (n = 2, x = 10)', () => {
     const milestones = responses
       .filter((r) => r.statusCode === 201)
       .map((r) => r.json<CouponBody>().milestone);
-    expect(milestones.sort()).toEqual([4, 5]);
-    expect(await testApp.context.collections.coupons.countDocuments()).toBe(5);
+    expect(milestones.sort()).toEqual([2, 3]);
+    expect(await testApp.context.collections.coupons.countDocuments()).toBe(3);
   });
 });
 
@@ -97,10 +167,7 @@ describe('coupon redemption at checkout', () => {
   });
   afterAll(() => testApp.close());
 
-  async function newCoupon(): Promise<string> {
-    await placeOrders(testApp, productId, 1);
-    return (await generateCoupon(testApp)).json<CouponBody>().code;
-  }
+  const newCoupon = () => earnReward(testApp, productId);
 
   it('applies a floored discount, snapshots it on the order and marks the coupon redeemed', async () => {
     const code = await newCoupon();
@@ -179,8 +246,7 @@ describe('100% coupon', () => {
         unitPriceMinor: 1_999,
         stock: 10,
       });
-      await placeOrders(testApp, productId, 1);
-      const code = (await generateCoupon(testApp)).json<CouponBody>().code;
+      const code = await earnReward(testApp, productId);
 
       const response = await checkout(
         testApp,
@@ -201,50 +267,63 @@ describe('100% coupon', () => {
   });
 });
 
-describe('automatic reward generation (REWARD_AUTO_GENERATE)', () => {
-  const rewardCount = (testApp: TestApp) => testApp.context.collections.coupons.countDocuments();
+describe('progress towards the next reward (GET /rewards/progress)', () => {
+  interface Progress {
+    everyNOrders: number;
+    ordersTowardNext: number;
+    ordersLeft: number;
+    isRewardDue: boolean;
+  }
+  const progressOf = async (testApp: TestApp) =>
+    (await testApp.app.inject({ method: 'GET', url: '/rewards/progress' })).json<Progress>();
 
-  it('creates the reward when an order reaches a milestone, once, even if the order is replayed', async () => {
-    const testApp = await createTestApp({
-      rewards: { everyNOrders: 2, discountPercent: 10, autoGenerate: true },
-    });
+  it('counts orders towards the reward and starts again when an order unlocks it', async () => {
+    const testApp = await createTestApp({ rewards: { everyNOrders: 3, discountPercent: 10 } });
     try {
       const productId = await insertProduct(testApp, {
-        sku: 'AUTO',
+        sku: 'TRACK',
         unitPriceMinor: 100,
         stock: 50,
       });
 
+      expect(await progressOf(testApp)).toMatchObject({
+        everyNOrders: 3,
+        ordersTowardNext: 0,
+        ordersLeft: 3,
+        isRewardDue: false,
+      });
+
+      await placeOrders(testApp, productId, 2);
+      expect(await progressOf(testApp)).toMatchObject({ ordersTowardNext: 2, ordersLeft: 1 });
+
+      await placeOrders(testApp, productId, 1); // the 3rd order creates the reward
+      expect(await progressOf(testApp)).toMatchObject({
+        ordersTowardNext: 0,
+        ordersLeft: 3,
+        isRewardDue: false,
+      });
+
       await placeOrders(testApp, productId, 1);
-      expect(await rewardCount(testApp)).toBe(0); // 1 order: milestone 1 (order 2) not reached
-
-      const cartId = await createCartWith(testApp, [{ productId, quantity: 1 }]);
-      const key = 'auto-generate-milestone-order';
-      expect((await checkout(testApp, cartId, { key })).statusCode).toBe(201);
-      expect(await rewardCount(testApp)).toBe(1);
-
-      expect((await checkout(testApp, cartId, { key })).statusCode).toBe(200); // replay
-      expect(await rewardCount(testApp)).toBe(1);
-
-      // The admin operation still works and agrees that nothing more is due.
-      expect(errorCodeOf(await generateCoupon(testApp))).toBe('NO_ELIGIBLE_MILESTONE');
+      expect(await progressOf(testApp)).toMatchObject({ ordersTowardNext: 1, ordersLeft: 2 });
     } finally {
       await testApp.close();
     }
   });
 
-  it('is off by default: orders alone create no reward', async () => {
+  it('shows a reward as due only when a reached milestone has no coupon', async () => {
     const testApp = await createTestApp({ rewards: { everyNOrders: 1, discountPercent: 10 } });
     try {
       const productId = await insertProduct(testApp, {
-        sku: 'MANUAL',
+        sku: 'MISSING',
         unitPriceMinor: 100,
         stock: 50,
       });
+      await placeOrders(testApp, productId, 1);
+      await testApp.context.collections.coupons.deleteMany({});
 
-      await placeOrders(testApp, productId, 2);
-
-      expect(await rewardCount(testApp)).toBe(0);
+      expect(await progressOf(testApp)).toMatchObject({ isRewardDue: true });
+      expect((await generateCoupon(testApp)).statusCode).toBe(201);
+      expect(await progressOf(testApp)).toMatchObject({ isRewardDue: false, ordersLeft: 1 });
     } finally {
       await testApp.close();
     }

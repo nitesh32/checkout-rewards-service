@@ -14,3 +14,4 @@ export type ProductPage = JsonBody<paths['/products']['get'], 200>;
 export type Order = JsonBody<paths['/orders/{orderId}']['get'], 200>;
 export type Reward = JsonBody<paths['/rewards']['get'], 200>[number];
 export type CheckoutQuote = JsonBody<paths['/carts/{cartId}/quote']['get'], 200>;
+export type RewardProgress = JsonBody<paths['/rewards/progress']['get'], 200>;

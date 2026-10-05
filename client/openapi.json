@@ -1687,6 +1687,7 @@
                     "totalMinor",
                     "currency",
                     "coupon",
+                    "unlockedReward",
                     "payment",
                     "placedAt"
                   ],
@@ -1786,6 +1787,22 @@
                       },
                       "nullable": true
                     },
+                    "unlockedReward": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "percentOff"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "percentOff": {
+                          "type": "integer"
+                        }
+                      },
+                      "nullable": true
+                    },
                     "payment": {
                       "type": "object",
                       "required": [
@@ -1830,6 +1847,7 @@
                     "totalMinor",
                     "currency",
                     "coupon",
+                    "unlockedReward",
                     "payment",
                     "placedAt"
                   ],
@@ -1914,6 +1932,22 @@
                       "type": "string"
                     },
                     "coupon": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "percentOff"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "percentOff": {
+                          "type": "integer"
+                        }
+                      },
+                      "nullable": true
+                    },
+                    "unlockedReward": {
                       "type": "object",
                       "required": [
                         "code",
@@ -2150,6 +2184,7 @@
                     "totalMinor",
                     "currency",
                     "coupon",
+                    "unlockedReward",
                     "payment",
                     "placedAt"
                   ],
@@ -2234,6 +2269,22 @@
                       "type": "string"
                     },
                     "coupon": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "percentOff"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "percentOff": {
+                          "type": "integer"
+                        }
+                      },
+                      "nullable": true
+                    },
+                    "unlockedReward": {
                       "type": "object",
                       "required": [
                         "code",
@@ -2424,6 +2475,7 @@
                           "totalMinor",
                           "currency",
                           "coupon",
+                          "unlockedReward",
                           "payment",
                           "placedAt"
                         ],
@@ -2523,6 +2575,22 @@
                             },
                             "nullable": true
                           },
+                          "unlockedReward": {
+                            "type": "object",
+                            "required": [
+                              "code",
+                              "percentOff"
+                            ],
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "percentOff": {
+                                "type": "integer"
+                              }
+                            },
+                            "nullable": true
+                          },
                           "payment": {
                             "type": "object",
                             "required": [
@@ -2597,6 +2665,7 @@
         "tags": [
           "Admin"
         ],
+        "description": "Checkout already creates each milestone coupon with the order that reaches it, so this only catches up a milestone that has none.",
         "responses": {
           "201": {
             "description": "Default Response",
@@ -2898,6 +2967,71 @@
                         "maximum": 100,
                         "type": "integer"
                       }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rewards/progress": {
+      "get": {
+        "summary": "Progress towards the next reward (\"3 orders left\"), read-only",
+        "tags": [
+          "Rewards"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "everyNOrders",
+                    "percentOff",
+                    "placedOrders",
+                    "rewardedMilestones",
+                    "ordersTowardNext",
+                    "ordersLeft",
+                    "isRewardDue"
+                  ],
+                  "properties": {
+                    "everyNOrders": {
+                      "minimum": 1,
+                      "description": "n: one reward per n orders",
+                      "type": "integer"
+                    },
+                    "percentOff": {
+                      "minimum": 1,
+                      "maximum": 100,
+                      "description": "x: discount of each reward",
+                      "type": "integer"
+                    },
+                    "placedOrders": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "rewardedMilestones": {
+                      "minimum": 0,
+                      "description": "Milestones that have a coupon",
+                      "type": "integer"
+                    },
+                    "ordersTowardNext": {
+                      "minimum": 0,
+                      "description": "Orders counted towards the next reward (0..n); restarts after generation",
+                      "type": "integer"
+                    },
+                    "ordersLeft": {
+                      "minimum": 0,
+                      "description": "Orders still needed; 0 when a reward is due",
+                      "type": "integer"
+                    },
+                    "isRewardDue": {
+                      "description": "A milestone is reached and its reward can be generated",
+                      "type": "boolean"
                     }
                   }
                 }

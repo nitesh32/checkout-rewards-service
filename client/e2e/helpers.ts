@@ -4,8 +4,12 @@ interface Id {
   id: string;
 }
 
+interface PlacedOrder {
+  unlockedReward: { code: string } | null;
+}
+
 /** Places one order (one unit of the first product) through the API. */
-export async function placeOrderViaApi(request: APIRequestContext): Promise<void> {
+export async function placeOrderViaApi(request: APIRequestContext): Promise<PlacedOrder> {
   const products = (await (await request.get('/api/products?limit=1')).json()) as { data: Id[] };
   const cart = (await (await request.post('/api/carts')).json()) as Id;
   await request.post(`/api/carts/${cart.id}/items`, {
@@ -16,21 +20,14 @@ export async function placeOrderViaApi(request: APIRequestContext): Promise<void
     data: {},
   });
   expect(response.status()).toBe(201);
+  return (await response.json()) as PlacedOrder;
 }
 
-/** Places one order, then generates a reward (the e2e backend uses n = 1). */
+/** Places orders until one unlocks a reward (the e2e backend uses n = 1), and returns its code. */
 export async function createReward(request: APIRequestContext): Promise<string> {
-  await placeOrderViaApi(request);
-  const reward = (await (await request.post('/api/admin/coupons')).json()) as { code: string };
-  return reward.code;
-}
-
-/** Generates every reward that is already due, so the next generation needs a new order. */
-export async function generateAllDueRewards(request: APIRequestContext): Promise<void> {
   for (;;) {
-    const response = await request.post('/api/admin/coupons');
-    if (response.status() === 409) return;
-    expect(response.status()).toBe(201);
+    const { unlockedReward } = await placeOrderViaApi(request);
+    if (unlockedReward) return unlockedReward.code;
   }
 }
 

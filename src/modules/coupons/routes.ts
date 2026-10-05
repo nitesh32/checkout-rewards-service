@@ -2,8 +2,8 @@ import type { FastifyPluginCallbackTypebox } from '@fastify/type-provider-typebo
 import type { AppContext } from '../../context.js';
 import { errorResponses, pageOf } from '../../shared/schemas.js';
 import { Type } from '@sinclair/typebox';
-import { CouponSchema, ListCouponsQuery, RewardSchema } from './schemas.js';
-import { generateCoupon, listAvailableRewards, listCoupons } from './service.js';
+import { CouponSchema, ListCouponsQuery, RewardProgressSchema, RewardSchema } from './schemas.js';
+import { generateCoupon, getRewardProgress, listAvailableRewards, listCoupons } from './service.js';
 
 export const couponRoutes =
   (context: AppContext): FastifyPluginCallbackTypebox =>
@@ -14,6 +14,8 @@ export const couponRoutes =
         schema: {
           tags: ['Admin'],
           summary: 'Generate the coupon for the earliest eligible, unrewarded milestone',
+          description:
+            'Checkout already creates each milestone coupon with the order that reaches it, so this only catches up a milestone that has none.',
           response: { 201: CouponSchema, ...errorResponses(409) },
         },
       },
@@ -30,6 +32,18 @@ export const couponRoutes =
         },
       },
       () => listAvailableRewards(context),
+    );
+
+    app.get(
+      '/rewards/progress',
+      {
+        schema: {
+          tags: ['Rewards'],
+          summary: 'Progress towards the next reward ("3 orders left"), read-only',
+          response: { 200: RewardProgressSchema },
+        },
+      },
+      () => getRewardProgress(context),
     );
 
     app.get(

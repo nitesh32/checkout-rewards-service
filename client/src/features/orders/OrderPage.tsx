@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check, Gift } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router';
 import { ErrorState } from '@/components/ErrorState';
 import { Money } from '@/components/Money';
@@ -9,6 +9,7 @@ import { buttonClasses } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDateTime } from '@/lib/dateTime';
 import { formatOrderNumber } from '@/lib/orderNumber';
+import { RewardProgressCard } from '../rewards/RewardProgressCard';
 import { useOrder } from './orderApi';
 
 /** Checkout navigates here with `{ isReplay }` so we can tell the customer a retry was recognised. */
@@ -36,8 +37,17 @@ export function OrderPage() {
   if (order.isError) return <ErrorState error={order.error} onRetry={() => void order.refetch()} />;
   if (!order.data) return null;
 
-  const { orderNumber, placedAt, status, items, subtotalMinor, discountMinor, totalMinor, coupon } =
-    order.data;
+  const {
+    orderNumber,
+    placedAt,
+    status,
+    items,
+    subtotalMinor,
+    discountMinor,
+    totalMinor,
+    coupon,
+    unlockedReward,
+  } = order.data;
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -60,6 +70,25 @@ export function OrderPage() {
           You saved <Money amountMinor={discountMinor} /> with{' '}
           <span className="font-mono">{coupon.code}</span>
         </p>
+      )}
+      {unlockedReward && (
+        <section
+          aria-label="Reward unlocked"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3"
+        >
+          <div className="flex items-center gap-3">
+            <Gift className="size-5 shrink-0 text-accent" aria-hidden />
+            <p>
+              <span className="font-medium">
+                This order unlocked {unlockedReward.percentOff}% off your next order.
+              </span>{' '}
+              Your code is <span className="font-mono font-medium">{unlockedReward.code}</span>.
+            </p>
+          </div>
+          <Link to="/rewards" className={buttonClasses({ variant: 'outline' })}>
+            View rewards
+          </Link>
+        </section>
       )}
       {isReplay && (
         <p className="text-muted-foreground">
@@ -99,6 +128,8 @@ export function OrderPage() {
           </div>
         </dl>
       </section>
+
+      <RewardProgressCard />
 
       <Link to="/products" className={buttonClasses({ className: 'h-11 self-start px-6' })}>
         Continue shopping

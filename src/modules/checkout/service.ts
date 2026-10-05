@@ -6,7 +6,7 @@ import { isDuplicateKeyError, withTransaction } from '../../db/client.js';
 import { AppError } from '../../shared/errors.js';
 import { CURRENCY, calculateDiscountMinor, sumMinor } from '../../shared/money.js';
 import { priceCartItems, productIdsOf, type PricedLine } from '../carts/pricing.js';
-import { generateDueRewards } from '../coupons/service.js';
+import { unlockMilestoneReward } from '../coupons/service.js';
 import { findProductsById, toStockShortage } from '../products/service.js';
 import type { CheckoutBody } from './schemas.js';
 
@@ -186,6 +186,7 @@ async function createOrder(
     { session, returnDocument: 'after' },
   );
   if (!counter) throw new Error('Order counter document is missing; run database setup');
+  const unlockedReward = await unlockMilestoneReward(context, counter.seq, session);
 
   const order: OrderDoc = {
     _id: orderId,
@@ -199,6 +200,9 @@ async function createOrder(
     totalMinor,
     currency: CURRENCY,
     ...(coupon ? { coupon: { code: coupon.code, percentOff: coupon.percentOff } } : {}),
+    ...(unlockedReward
+      ? { unlockedReward: { code: unlockedReward.code, percentOff: unlockedReward.percentOff } }
+      : {}),
     status: 'PLACED',
     payment: { provider: payment.provider, status: 'SUCCEEDED' },
     placedAt: new Date(),
@@ -231,10 +235,6 @@ export async function placeOrder(
     const order = await withTransaction(context.client, (session) =>
       createOrder(context, request, requestHash, session),
     );
-    // After the order has committed, so the order count it reads includes this order. Replays
-    // skip this: the original request already did it. If it fails, the order still stands and a
-    // retry with the same key replays it; the reward stays due for the admin operation.
-    if (context.rewards.autoGenerate) await generateDueRewards(context);
     return { order, isReplay: false };
   } catch (error) {
     if (!mayBeLostRace(error)) throw error;

@@ -4,10 +4,9 @@ import {
   checkout,
   createCartWith,
   createTestApp,
+  earnReward,
   errorCodeOf,
-  generateCoupon,
   insertProduct,
-  placeOrders,
   stockOf,
   type TestApp,
 } from './helpers/testApp.js';
@@ -34,10 +33,7 @@ describe('checkout quote and public rewards', () => {
       url: `/carts/${cartId}/quote${couponCode ? `?couponCode=${couponCode}` : ''}`,
     });
 
-  async function newRewardCode(): Promise<string> {
-    await placeOrders(testApp, productId, 1);
-    return (await generateCoupon(testApp)).json<{ code: string }>().code;
-  }
+  const newRewardCode = () => earnReward(testApp, productId);
 
   it('prices the cart without a code', async () => {
     const cartId = await createCartWith(testApp, [{ productId, quantity: 3 }]);

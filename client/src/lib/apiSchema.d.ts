@@ -854,6 +854,10 @@ export interface paths {
                                 code: string;
                                 percentOff: number;
                             } | null;
+                            unlockedReward: {
+                                code: string;
+                                percentOff: number;
+                            } | null;
                             payment: {
                                 provider: string;
                                 /** @enum {string} */
@@ -897,6 +901,10 @@ export interface paths {
                             totalMinor: number;
                             currency: string;
                             coupon: {
+                                code: string;
+                                percentOff: number;
+                            } | null;
+                            unlockedReward: {
                                 code: string;
                                 percentOff: number;
                             } | null;
@@ -1049,6 +1057,10 @@ export interface paths {
                                 code: string;
                                 percentOff: number;
                             } | null;
+                            unlockedReward: {
+                                code: string;
+                                percentOff: number;
+                            } | null;
                             payment: {
                                 provider: string;
                                 /** @enum {string} */
@@ -1160,6 +1172,10 @@ export interface paths {
                                     code: string;
                                     percentOff: number;
                                 } | null;
+                                unlockedReward: {
+                                    code: string;
+                                    percentOff: number;
+                                } | null;
                                 payment: {
                                     provider: string;
                                     /** @enum {string} */
@@ -1262,7 +1278,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Generate the coupon for the earliest eligible, unrewarded milestone */
+        /**
+         * Generate the coupon for the earliest eligible, unrewarded milestone
+         * @description Checkout already creates each milestone coupon with the order that reaches it, so this only catches up a milestone that has none.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -1344,6 +1363,56 @@ export interface paths {
                             code: string;
                             percentOff: number;
                         }[];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rewards/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Progress towards the next reward ("3 orders left"), read-only */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description n: one reward per n orders */
+                            everyNOrders: number;
+                            /** @description x: discount of each reward */
+                            percentOff: number;
+                            placedOrders: number;
+                            /** @description Milestones that have a coupon */
+                            rewardedMilestones: number;
+                            /** @description Orders counted towards the next reward (0..n); restarts after generation */
+                            ordersTowardNext: number;
+                            /** @description Orders still needed; 0 when a reward is due */
+                            ordersLeft: number;
+                            /** @description A milestone is reached and its reward can be generated */
+                            isRewardDue: boolean;
+                        };
                     };
                 };
             };

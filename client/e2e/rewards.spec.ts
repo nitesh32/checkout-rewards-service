@@ -1,41 +1,28 @@
 import { expect, test } from '@playwright/test';
-import {
-  applyCode,
-  createReward,
-  generateAllDueRewards,
-  placeOrderViaApi,
-  startCheckoutWith,
-  useRewardElsewhere,
-} from './helpers';
+import { applyCode, createReward, startCheckoutWith, useRewardElsewhere } from './helpers';
 
 const SPEAKER = 'Portable Bluetooth Speaker'; // ₹7,999, so a 10% reward saves ₹799.90
 
-test.describe('generating rewards on the Rewards page', () => {
-  test('explains how many orders are needed when no reward is due', async ({ page, request }) => {
-    await generateAllDueRewards(request);
-    await page.goto('/rewards');
+test.describe('rewards unlocked by orders', () => {
+  test('the order that reaches the milestone shows its reward, and the tracker starts again', async ({
+    page,
+  }) => {
+    await startCheckoutWith(page, SPEAKER);
+    await page.getByRole('button', { name: 'Place order' }).click();
 
-    await page.getByRole('button', { name: 'Generate reward' }).click();
+    const unlocked = page.getByRole('region', { name: 'Reward unlocked' });
+    await expect(unlocked).toContainText('This order unlocked 10% off your next order'); // n = 1
+    const code = (await unlocked.innerText()).match(/SAVE-[A-Z0-9]{8}/)?.[0] ?? '';
+    const tracker = page.getByRole('region', { name: 'Reward progress' });
+    await expect(tracker).toContainText('1 order left to unlock 10% off');
+    await expect(tracker.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
 
-    await expect(
-      page.getByText(/No reward is due yet: .* the next reward unlocks at order \d+/),
-    ).toBeVisible();
-    await expect(page.getByText('1 order to go')).toBeVisible();
-  });
-
-  test('creates the reward for a reached milestone and lists it', async ({ page, request }) => {
-    await generateAllDueRewards(request);
-    await placeOrderViaApi(request); // n = 1 in e2e, so this order reaches the next milestone
-    await page.goto('/rewards');
-
-    await page.getByRole('button', { name: 'Generate reward' }).click();
-
-    const created = page.getByText(/^Created SAVE-[A-Z0-9]{8}: 10% off/);
-    await expect(created).toBeVisible();
-    const code = (await created.innerText()).match(/SAVE-[A-Z0-9]{8}/)?.[0] ?? '';
+    await unlocked.getByRole('link', { name: 'View rewards' }).click();
     await expect(
       page.locator('main').getByRole('listitem').filter({ hasText: code }),
     ).toBeVisible();
+    // Nothing is waiting for an administrator, so the admin action stays out of the way.
+    await expect(page.getByRole('button', { name: 'Generate reward' })).toHaveCount(0);
   });
 });
 

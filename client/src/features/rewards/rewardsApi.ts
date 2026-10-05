@@ -13,9 +13,17 @@ export function useAvailableRewards() {
   });
 }
 
+/** How many orders are left until the next reward; refreshed after each order. */
+export function useRewardProgress() {
+  return useQuery({
+    queryKey: queryKeys.rewardProgress,
+    queryFn: async ({ signal }) => (await unwrap(api.GET('/rewards/progress', { signal }))).data,
+  });
+}
+
 /**
- * The administrator action from the assignment: create the reward for the earliest order
- * milestone that has been reached but not yet rewarded. Fails with NO_ELIGIBLE_MILESTONE otherwise.
+ * The administrator action from the assignment: create the reward for the earliest reached
+ * milestone that has none. Fails with NO_ELIGIBLE_MILESTONE otherwise.
  */
 export function useGenerateReward() {
   const queryClient = useQueryClient();

@@ -17,6 +17,7 @@ export function toOrderDto(order: OrderDoc): OrderDto {
     totalMinor: order.totalMinor,
     currency: order.currency,
     coupon: order.coupon ?? null,
+    unlockedReward: order.unlockedReward ?? null,
     payment: order.payment,
     placedAt: order.placedAt.toISOString(),
   };

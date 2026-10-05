@@ -49,6 +49,8 @@ export interface OrderDoc {
   totalMinor: number;
   currency: string;
   coupon?: { code: string; percentOff: number };
+  /** The reward this order unlocked by reaching a milestone. */
+  unlockedReward?: { code: string; percentOff: number };
   status: 'PLACED';
   payment: { provider: string; status: 'SUCCEEDED' };
   placedAt: Date;

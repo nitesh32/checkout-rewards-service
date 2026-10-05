@@ -17,7 +17,6 @@ The reasoning behind the design lives in **[DECISIONS.md](./DECISIONS.md)**.
 
 ```bash
 make up        # MongoDB + API (http://localhost:3000, docs at /docs) + client (http://localhost:5173)
-make demo      # same, but every order creates a reward automatically (quickest way to try rewards)
 make test      # backend tests, client tests, browser test
 make reset     # stop everything and delete the database
 ```
@@ -37,32 +36,29 @@ npm install
 npm run dev                      # seeds 6 products on start (idempotent)
 ```
 
-| Variable                  | Default                                            | Meaning                                                   |
-| ------------------------- | -------------------------------------------------- | --------------------------------------------------------- |
-| `PORT`                    | `3000`                                             |                                                           |
-| `MONGO_URI`               | `mongodb://localhost:27017/?directConnection=true` |                                                           |
-| `REWARD_EVERY_N_ORDERS`   | `5` (`make demo`: `1`)                             | `n`: one coupon per n-th order                            |
-| `REWARD_DISCOUNT_PERCENT` | `10`                                               | `x`: percent off for each coupon                          |
-| `REWARD_AUTO_GENERATE`    | `false` (`make demo`: `true`)                      | create the reward as soon as an order reaches a milestone |
+| Variable                  | Default                                            | Meaning                          |
+| ------------------------- | -------------------------------------------------- | -------------------------------- |
+| `PORT`                    | `3000`                                             |                                  |
+| `MONGO_URI`               | `mongodb://localhost:27017/?directConnection=true` |                                  |
+| `REWARD_EVERY_N_ORDERS`   | `5`                                                | `n`: one coupon per n-th order   |
+| `REWARD_DISCOUNT_PERCENT` | `10`                                               | `x`: percent off for each coupon |
 
 Seed data: 6 premium-electronics products (speaker, earbuds, headphones, phone, smartwatch, camera), including `CAMERA-MIRRORLESS` with only **3** units in stock. Seeding only adds missing SKUs, so run `make reset` to replace an existing database.
 
 ## Try the rewards in two minutes
 
-**As the assignment describes (`make up`).** Every 5th order reaches a milestone, and a reward is
-created when an administrator asks for it:
+As in the assignment: every 5th order reaches a milestone, and an administrator generates the
+reward for it.
 
-1. `make up`, open http://localhost:5173 and place 5 orders.
-2. Open **Rewards** and press **Generate reward** (the admin operation `POST /admin/coupons`).
-   Before the 5th order it explains how many orders are still needed.
+1. `make reset && make up`, open http://localhost:5173 and place 5 orders. The **Rewards** page (and
+   each order confirmation) shows a tracker: "3 orders left to unlock 10% off", with one step per
+   order.
+2. After the 5th order the tracker says the reward is unlocked. On **Rewards**, press **Generate
+   reward** (the admin operation `POST /admin/coupons`). The tracker then starts again from zero.
 3. Add a product again: checkout suggests the reward with its exact saving. Apply it (or use
    **Use at checkout** on the Rewards page) and place the order.
 4. `GET /admin/reports/sales` (Swagger at http://localhost:3000/docs) shows the discount and the
    coupon counts.
-
-**Quickest (`make demo`).** Every order reaches a milestone and creates its reward automatically
-(`REWARD_EVERY_N_ORDERS=1`, `REWARD_AUTO_GENERATE=true`): place one order and a reward is waiting
-at the next checkout. Run `make reset` first if the database already has orders from `make up`.
 
 ## Product photos
 
@@ -100,6 +96,7 @@ Money is always an integer in minor units (paise), in fields ending `Minor`. Rou
 | DELETE | `/carts/:cartId/items/:productId` | 200     | 404 `CART_ITEM_NOT_FOUND`, 409 `CART_NOT_OPEN`                                                                             |
 | GET    | `/carts/:cartId/quote`            | 200     | Read-only preview of totals; query `couponCode?`. 404 `COUPON_NOT_FOUND`, 409 `COUPON_ALREADY_REDEEMED` / `CART_NOT_OPEN`  |
 | GET    | `/rewards`                        | 200     | Public list of available rewards `[{ code, percentOff }]`, best first                                                      |
+| GET    | `/rewards/progress`               | 200     | Orders counted towards the next reward and orders left; restarts after each generated reward                               |
 | POST   | `/carts/:cartId/checkout`         | 201/200 | Header `Idempotency-Key` required. Body `{ couponCode?, expectedTotalMinor? }`. See below                                  |
 | GET    | `/orders/:orderId`                | 200     | 404 `ORDER_NOT_FOUND`                                                                                                      |
 | POST   | `/admin/coupons`                  | 201     | 409 `NO_ELIGIBLE_MILESTONE` (details: `placedOrders`, `nextMilestoneAt`)                                                   |

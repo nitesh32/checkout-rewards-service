@@ -5,10 +5,9 @@ import {
   checkout,
   createCartWith,
   createTestApp,
+  earnReward,
   errorCodeOf,
-  generateCoupon,
   insertProduct,
-  placeOrders,
   statusCounts,
   stockOf,
   type TestApp,
@@ -113,8 +112,8 @@ describe('concurrent checkouts', () => {
       unitPriceMinor: 10_000,
       stock: 50,
     });
-    await placeOrders(testApp, productId, 2);
-    const coupon = (await generateCoupon(testApp)).json<{ code: string }>();
+    const coupon = { code: await earnReward(testApp, productId) };
+    const stockBefore = await stockOf(testApp, productId);
     const carts = await Promise.all(
       Array.from({ length: 5 }, () => createCartWith(testApp, [{ productId, quantity: 1 }])),
     );
@@ -130,7 +129,7 @@ describe('concurrent checkouts', () => {
         .every((r) => errorCodeOf(r) === 'COUPON_ALREADY_REDEEMED'),
     ).toBe(true);
     // The four losers rolled back completely: only the winner consumed stock.
-    expect(await stockOf(testApp, productId)).toBe(50 - 2 - 1);
+    expect(await stockOf(testApp, productId)).toBe(stockBefore - 1);
   });
 
   it('changes nothing when a multi-item checkout fails part-way', async () => {

@@ -3,7 +3,6 @@ import {
   checkout,
   createCartWith,
   createTestApp,
-  generateCoupon,
   insertProduct,
   type TestApp,
 } from './helpers/testApp.js';
@@ -58,11 +57,10 @@ describe('sales report', () => {
     ]) {
       await checkout(testApp, await createCartWith(testApp, lines));
     }
-    const coupon = (await generateCoupon(testApp)).json<{ code: string }>();
+    const coupon = await testApp.context.collections.coupons.findOne({ milestone: 1 }); // n = 2
     await checkout(testApp, await createCartWith(testApp, [{ productId: book, quantity: 2 }]), {
-      body: { couponCode: coupon.code },
+      body: { couponCode: coupon?.code },
     });
-    await generateCoupon(testApp); // 3 orders placed: milestone 2 not reached, so nothing is generated
 
     const report = await fetchReport();
     const orders = (

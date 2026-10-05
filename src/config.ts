@@ -3,11 +3,6 @@ export interface RewardsConfig {
   everyNOrders: number;
   /** Percentage taken off the subtotal by a generated coupon. */
   discountPercent: number;
-  /**
-   * When true, an order that reaches a milestone creates the reward straight away. When false
-   * (the default) rewards are only created when an administrator requests them.
-   */
-  autoGenerate?: boolean;
 }
 
 export interface Config {
@@ -34,14 +29,6 @@ function readInteger(
   return value;
 }
 
-function readBoolean(env: NodeJS.ProcessEnv, name: string, fallback: boolean): boolean {
-  const raw = env[name];
-  if (raw === undefined || raw === '') return fallback;
-  if (raw === 'true') return true;
-  if (raw === 'false') return false;
-  throw new Error(`${name} must be "true" or "false", received "${raw}"`);
-}
-
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: readInteger(env, 'PORT', 3000, { min: 1, max: 65535 }),
@@ -50,7 +37,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     rewards: {
       everyNOrders: readInteger(env, 'REWARD_EVERY_N_ORDERS', 5, { min: 1, max: 1_000_000 }),
       discountPercent: readInteger(env, 'REWARD_DISCOUNT_PERCENT', 10, { min: 1, max: 100 }),
-      autoGenerate: readBoolean(env, 'REWARD_AUTO_GENERATE', false),
     },
   };
 }

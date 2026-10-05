@@ -8,8 +8,9 @@ function ordersLabel(count: number): string {
 }
 
 /**
- * The assignment's administrator operation, surfaced on the Rewards page so it can be tried
- * without Swagger. There is no authentication in this project; a real store would gate it.
+ * The assignment's administrator operation. Checkout creates rewards itself, so the Rewards page
+ * only shows this when a reached milestone has no reward (for example orders placed before rewards
+ * were automatic). There is no authentication in this project; a real store would gate it.
  */
 export function GenerateRewardPanel() {
   const generate = useGenerateReward();
@@ -26,8 +27,8 @@ export function GenerateRewardPanel() {
             Admin: generate a reward
           </h2>
           <p className="text-sm text-muted-foreground">
-            Creates the reward for the next order milestone that has been reached. In a real store
-            this sits behind an admin login.
+            A reached milestone has no reward yet. This creates it. In a real store this sits behind
+            an admin login.
           </p>
         </div>
         <Button onClick={() => generate.mutate()} disabled={generate.isPending}>

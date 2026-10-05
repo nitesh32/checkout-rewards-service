@@ -117,10 +117,9 @@ same time can never create two coupons for the same milestone.
 
 **Consequences:** If several milestones have built up, the admin has to create them one by one.
 
-**Added later for demos:** setting `REWARD_AUTO_GENERATE=true` makes the service create the coupon
-right after an order reaches a milestone, using the same admin logic. It is off by default, so the
-brief's behaviour is unchanged (`make demo` turns it on). It runs after the order is saved, so it
-can never undo a successful order.
+**Progress tracker:** `GET /rewards/progress` shows how many orders are left until the next
+reward (the shop shows it as "3 orders left to unlock 10% off" with one step per order). It uses the
+same calculation as the admin operation, and it starts again from zero once a reward is generated.
 
 ### Decision 6: Store money as whole paise and round discounts down
 
@@ -252,13 +251,14 @@ out of stock). The HTTP status tells the client who can fix it:
 ## 7. What is built and what is left out
 
 **Backend:** products with seed data; carts; idempotent checkout in one transaction; coupons with
-milestones, admin generation and an optional automatic mode; checkout quote and public rewards
-list; order snapshots; admin order list; sales report; paginated lists; OpenAPI docs; Docker setup;
+milestones and admin generation; progress towards the next reward; checkout quote and public
+rewards list; order snapshots; admin order list; sales report; paginated lists; OpenAPI docs; Docker setup;
 tests for concurrency, retries, coupons, quotes, the report, carts and money.
 
 **Client (optional in the brief):** a small shop that shows the backend working: search and
 filters, cart with quantity controls, checkout with coupons and a confirmed discount, order
-receipt, and a Rewards page with an admin "Generate reward" button. Tested with unit tests and
+receipt, a "N orders left" reward tracker, and a Rewards page with an admin "Generate reward"
+button. Tested with unit tests and
 Playwright browser tests.
 
 **Left out on purpose:** login and permissions (admin routes are only separated by their path);
@@ -303,8 +303,9 @@ Examples where I redirected the AI's output:
 - A UI spec I used asked for a "points" system the backend does not have. When the AI flagged
   this, I chose to show rewards as the real coupons the backend issues, so the UI never promises a
   discount the API would not give.
-- After testing, I found that orders did not create rewards by themselves. That led to the
-  "Generate reward" admin button and the optional `REWARD_AUTO_GENERATE` setting (decision 5).
+- After testing, I found it was not clear when a reward would arrive. I kept the assignment's rule
+  (an admin generates it) and added a "Generate reward" button and a progress tracker ("3 orders
+  left"), instead of creating rewards automatically.
 - From my UX review: the Add to cart button moved off the product photo, the quantity stepper
   became compact, minus on the last unit now removes the item, and reward codes are confirmed
   (with the exact saving) before the order is placed.

@@ -5,11 +5,14 @@ import { ErrorState } from '@/components/ErrorState';
 import { buttonClasses } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GenerateRewardPanel } from './GenerateRewardPanel';
+import { RewardProgressCard } from './RewardProgressCard';
 import { RewardCode } from './RewardCode';
-import { useAvailableRewards } from './rewardsApi';
+import { useAvailableRewards, useRewardProgress } from './rewardsApi';
 
 export function RewardsPage() {
   const rewards = useAvailableRewards();
+  // Orders create rewards themselves; the admin action is only needed for a missed milestone.
+  const isRewardDue = useRewardProgress().data?.isRewardDue === true;
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -17,12 +20,13 @@ export function RewardsPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-[28px] font-bold leading-9 tracking-tight">Margin Rewards</h1>
         <p className="text-muted-foreground">
-          Every few orders, a reward is made available: a single-use code for a percentage off your
-          next order. Enter one at checkout.
+          Every few orders, the order that reaches the milestone unlocks a reward: a single-use code
+          for a percentage off your next order. Use it at checkout.
         </p>
       </div>
 
-      <GenerateRewardPanel />
+      <RewardProgressCard />
+      {isRewardDue && <GenerateRewardPanel />}
 
       {rewards.isLoading && (
         <div className="flex flex-col gap-3" aria-label="Loading rewards">

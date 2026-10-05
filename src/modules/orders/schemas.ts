@@ -10,6 +10,8 @@ export const OrderLineSchema = Type.Object({
   lineTotalMinor: MinorAmount,
 });
 
+const CouponRef = Type.Object({ code: Type.String(), percentOff: Type.Integer() });
+
 export const OrderSchema = Type.Object({
   id: ObjectIdString,
   orderNumber: Type.Integer({ minimum: 1 }),
@@ -20,10 +22,9 @@ export const OrderSchema = Type.Object({
   discountMinor: MinorAmount,
   totalMinor: MinorAmount,
   currency: Type.String(),
-  coupon: Type.Union([
-    Type.Object({ code: Type.String(), percentOff: Type.Integer() }),
-    Type.Null(),
-  ]),
+  coupon: Type.Union([CouponRef, Type.Null()]),
+  /** Set when this order reached a milestone and so created a new reward. */
+  unlockedReward: Type.Union([CouponRef, Type.Null()]),
   payment: Type.Object({ provider: Type.String(), status: Type.Literal('SUCCEEDED') }),
   placedAt: DateTimeString,
 });

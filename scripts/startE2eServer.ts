@@ -3,14 +3,15 @@ import { buildApp } from '../src/app.js';
 import { createAppContext } from '../src/context.js';
 import { seedProducts } from '../src/db/seed.js';
 
-/** A throwaway backend (in-memory MongoDB, seeded, a coupon after every order) for browser tests. */
+/** A throwaway backend (in-memory MongoDB, seeded, a reward with every order) for browser tests. */
 const port = Number(process.env['PORT'] ?? 3100);
 
 const replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
 const context = await createAppContext({
   mongoUri: replSet.getUri(),
   dbName: 'e2e',
-  rewards: { everyNOrders: 1, discountPercent: 10 },
+  // Browser tests use n = 1 so every order reaches a milestone; override for manual checks.
+  rewards: { everyNOrders: Number(process.env['REWARD_EVERY_N_ORDERS'] ?? 1), discountPercent: 10 },
 });
 await seedProducts(context.collections.products);
 
