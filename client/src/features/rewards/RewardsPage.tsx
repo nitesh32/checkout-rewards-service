@@ -44,8 +44,8 @@ export function RewardsPage() {
       )}
       {rewards.isSuccess && rewards.data.length > 0 && (
         <ul className="flex flex-col gap-3">
-          {rewards.data.map((coupon) => (
-            <RewardCode key={coupon.id} coupon={coupon} />
+          {rewards.data.map((reward) => (
+            <RewardCode key={reward.code} reward={reward} />
           ))}
         </ul>
       )}

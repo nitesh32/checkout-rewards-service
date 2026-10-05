@@ -18,10 +18,13 @@ const ERROR_COPY: Record<string, ErrorCopy> = {
     description: 'That item is no longer in your cart.',
   },
   ORDER_NOT_FOUND: { title: 'Order not found', description: 'We could not find that order.' },
-  COUPON_NOT_FOUND: { title: 'Coupon not found', description: 'Check the code and try again.' },
+  COUPON_NOT_FOUND: {
+    title: 'Code not found',
+    description: "This code doesn't exist. Check it and try again.",
+  },
   COUPON_ALREADY_REDEEMED: {
-    title: 'Coupon already used',
-    description: 'This coupon has already been redeemed. Remove it to continue without a discount.',
+    title: 'Code already used',
+    description: 'This code has already been used on another order.',
   },
   CART_NOT_OPEN: {
     title: 'Cart already checked out',

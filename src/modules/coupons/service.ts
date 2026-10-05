@@ -5,7 +5,7 @@ import type { CouponDoc } from '../../db/collections.js';
 import { isDuplicateKeyError } from '../../db/client.js';
 import { AppError } from '../../shared/errors.js';
 import { findPage, type Page } from '../../shared/pagination.js';
-import type { CouponDto, ListCouponsQuery } from './schemas.js';
+import type { CouponDto, ListCouponsQuery, RewardDto } from './schemas.js';
 
 /** No 0/O/1/I so codes can be read aloud or typed without ambiguity. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -82,4 +82,16 @@ export async function listCoupons(
   const filter: Filter<CouponDoc> = status ? { status } : {};
   const page = await findPage(collections.coupons, filter, { limit, cursor }, 'desc');
   return { data: page.data.map(toCouponDto), nextCursor: page.nextCursor };
+}
+
+const MAX_LISTED_REWARDS = 100;
+
+/** Rewards anyone may use right now (there are no customer accounts), best first. */
+export async function listAvailableRewards({ collections }: AppContext): Promise<RewardDto[]> {
+  const coupons = await collections.coupons
+    .find({ status: 'AVAILABLE' })
+    .sort({ percentOff: -1, milestone: 1 })
+    .limit(MAX_LISTED_REWARDS)
+    .toArray();
+  return coupons.map(({ code, percentOff }) => ({ code, percentOff }));
 }

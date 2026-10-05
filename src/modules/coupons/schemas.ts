@@ -20,3 +20,10 @@ export const ListCouponsQuery = Type.Composite([
   }),
 ]);
 export type ListCouponsQuery = Static<typeof ListCouponsQuery>;
+
+/** What shoppers see of a reward: no milestones or redemption details. */
+export const RewardSchema = Type.Object({
+  code: Type.String(),
+  percentOff: Type.Integer({ minimum: 1, maximum: 100 }),
+});
+export type RewardDto = Static<typeof RewardSchema>;

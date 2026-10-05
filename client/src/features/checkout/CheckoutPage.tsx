@@ -1,36 +1,33 @@
 import { ChevronDown, ShoppingBag } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { Money } from '@/components/Money';
 import { Button, buttonClasses } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SummaryLine } from '@/components/SummaryLine';
-import { useAvailableRewards } from '../rewards/rewardsApi';
 import { ApiError } from '@/lib/api';
+import type { Cart } from '@/lib/apiTypes';
 import { cartIdStore } from '@/lib/cartStore';
 import { describeError } from '@/lib/errors';
 import { useCart } from '../cart/cartApi';
 import { useCartSheet } from '../cart/CartSheetContext';
-import { usePlaceOrder } from './checkoutApi';
+import { quoteQueryOptions, usePlaceOrder } from './checkoutApi';
 import { CheckoutErrorPanel } from './CheckoutErrorPanel';
 import { checkoutFingerprint, createIdempotencyKeyProvider } from './idempotencyKey';
+import { normalizeRewardCode, RewardOffer } from './RewardOffer';
 
 const COUPON_ERROR_CODES = ['COUPON_NOT_FOUND', 'COUPON_ALREADY_REDEEMED'];
 
+function isCouponError(error: unknown): error is ApiError {
+  return error instanceof ApiError && COUPON_ERROR_CODES.includes(error.code);
+}
+
 export function CheckoutPage() {
   const cart = useCart();
-  const placeOrder = usePlaceOrder();
-  const availableRewards = useAvailableRewards().data ?? [];
-  const navigate = useNavigate();
-  const { setOpen: setCartSheetOpen } = useCartSheet();
-
-  const [couponInput, setCouponInput] = useState('');
-  // Set when the customer accepts a changed total (PRICE_CHANGED); replaces the displayed subtotal.
-  const [acceptedTotalMinor, setAcceptedTotalMinor] = useState<number | undefined>();
-  const [keyFor] = useState(createIdempotencyKeyProvider);
+  const [searchParams] = useSearchParams();
 
   if (cart.isLoading) return <Skeleton className="h-96 w-full max-w-5xl" />;
   if (cart.isError) return <ErrorState error={cart.error} onRetry={() => void cart.refetch()} />;
@@ -49,45 +46,86 @@ export function CheckoutPage() {
     );
   }
 
-  const { id: cartId, lines, subtotalMinor } = cart.data;
-  const couponCode = couponInput.trim().toUpperCase() || undefined;
-  // With a coupon the discount is only known once the server applies it, so no total can be expected.
-  const expectedTotalMinor = acceptedTotalMinor ?? (couponCode ? undefined : subtotalMinor);
+  // "Use at checkout" on the Rewards page links here with ?reward=CODE.
+  const rewardFromLink = normalizeRewardCode(searchParams.get('reward') ?? '') || null;
+  return <CheckoutForm cart={cart.data} initialRewardCode={rewardFromLink} />;
+}
 
-  const submit = (totalToExpect: number | undefined) => {
-    const idempotencyKey = keyFor(
-      checkoutFingerprint({ cartId, couponCode, expectedTotalMinor: totalToExpect }),
-    );
-    placeOrder.mutate(
-      { cartId, idempotencyKey, couponCode, expectedTotalMinor: totalToExpect },
-      {
-        onSuccess: ({ order, isReplay }) =>
-          void navigate(`/orders/${order.id}`, { state: { isReplay } }),
-      },
-    );
-  };
+function CheckoutForm({
+  cart,
+  initialRewardCode,
+}: {
+  cart: Cart;
+  initialRewardCode: string | null;
+}) {
+  const placeOrder = usePlaceOrder();
+  const navigate = useNavigate();
+  const { setOpen: setCartSheetOpen } = useCartSheet();
+  const [keyFor] = useState(createIdempotencyKeyProvider);
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    submit(expectedTotalMinor);
-  };
+  const [appliedCode, setAppliedCode] = useState<string | null>(initialRewardCode);
+  const [rewardNotice, setRewardNotice] = useState<string | null>(null);
+  // Set when the customer accepts a changed total (PRICE_CHANGED); replaces the quoted total.
+  const [acceptedTotalMinor, setAcceptedTotalMinor] = useState<number | undefined>();
 
-  const handleAcceptNewTotal = (totalMinor: number) => {
-    setAcceptedTotalMinor(totalMinor);
-    submit(totalMinor);
-  };
+  const appliedQuote = useQuery({
+    ...quoteQueryOptions(cart, appliedCode),
+    enabled: appliedCode !== null,
+  });
+  const activeQuote = appliedCode !== null && appliedQuote.isSuccess ? appliedQuote.data : null;
+  const unusableCodeNotice =
+    appliedCode !== null && appliedQuote.isError
+      ? `${appliedCode} can't be used. ${describeError(appliedQuote.error).description}`
+      : null;
 
-  const handleCouponChange = (value: string) => {
-    setCouponInput(value);
+  const { id: cartId, lines, subtotalMinor } = cart;
+  const couponCode = activeQuote?.coupon?.code;
+  const discountMinor = activeQuote?.discountMinor ?? 0;
+  const totalMinor = acceptedTotalMinor ?? activeQuote?.totalMinor ?? subtotalMinor;
+  // While a code is being checked, the total is not final yet, so ordering waits.
+  const isConfirmingTotal = appliedCode !== null && appliedQuote.isFetching;
+
+  const changeReward = (code: string | null) => {
+    setAppliedCode(code);
+    setRewardNotice(null);
     setAcceptedTotalMinor(undefined);
     placeOrder.reset();
   };
 
+  const submit = (totalToExpect: number) => {
+    const idempotencyKey = keyFor(
+      checkoutFingerprint({ cartId, couponCode, expectedTotalMinor: totalToExpect }),
+    );
+    // mutateAsync, not mutate with callbacks: a successful order clears the cart, which unmounts
+    // this form, and TanStack Query skips per-call callbacks of unmounted components.
+    placeOrder
+      .mutateAsync({ cartId, idempotencyKey, couponCode, expectedTotalMinor: totalToExpect })
+      .then(
+        ({ order, isReplay }) => navigate(`/orders/${order.id}`, { state: { isReplay } }),
+        (error: unknown) => {
+          // The code was used by another order between Apply and now: drop it and say why.
+          if (isCouponError(error) && couponCode) {
+            setAppliedCode(null);
+            setRewardNotice(
+              `${couponCode} was just used on another order, so it has been removed. ` +
+                'Your total has been updated.',
+            );
+          }
+        },
+      );
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    submit(totalMinor);
+  };
+
+  const handleAcceptNewTotal = (newTotalMinor: number) => {
+    setAcceptedTotalMinor(newTotalMinor);
+    submit(newTotalMinor);
+  };
+
   const error = placeOrder.error;
-  const couponError =
-    error instanceof ApiError && COUPON_ERROR_CODES.includes(error.code)
-      ? describeError(error)
-      : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -95,75 +133,44 @@ export function CheckoutPage() {
       <h1 className="text-[28px] font-bold leading-9 tracking-tight">Checkout</h1>
 
       <div className="grid items-start gap-8 lg:grid-cols-[1fr_380px]">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6 lg:order-1">
-          <section
-            aria-labelledby="rewards-heading"
-            className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
-          >
-            <h2 id="rewards-heading" className="text-[15px] font-medium">
-              Margin Rewards
-            </h2>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="coupon" className="text-muted-foreground">
-                Reward code (optional)
-              </label>
-              <Input
-                id="coupon"
-                value={couponInput}
-                onChange={(event) => handleCouponChange(event.target.value)}
-                placeholder="SAVE-XXXXXXXX"
-                maxLength={64}
-                autoComplete="off"
-                aria-invalid={couponError !== null}
-                aria-describedby={couponError ? 'coupon-error' : undefined}
-                className="max-w-xs font-mono uppercase"
+        <div className="flex flex-col gap-6 lg:order-1">
+          <RewardOffer
+            cart={cart}
+            appliedQuote={activeQuote}
+            notice={rewardNotice ?? unusableCodeNotice}
+            onApply={changeReward}
+            onRemove={() => changeReward(null)}
+          />
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            {error && !isCouponError(error) && (
+              <CheckoutErrorPanel
+                error={error}
+                cartLines={lines}
+                onReviewCart={() => setCartSheetOpen(true)}
+                onAcceptNewTotal={handleAcceptNewTotal}
+                onRetry={() => submit(totalMinor)}
+                onLeaveCheckedOutCart={() => cartIdStore.clear()}
               />
-              {couponError && (
-                <p id="coupon-error" className="text-sm text-danger">
-                  {couponError.description}
-                </p>
-              )}
-            </div>
-            {availableRewards.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs text-muted-foreground">Available now</p>
-                <ul className="flex flex-wrap gap-2">
-                  {availableRewards.map((reward) => (
-                    <li key={reward.id}>
-                      <button
-                        type="button"
-                        aria-pressed={couponCode === reward.code}
-                        onClick={() => handleCouponChange(reward.code)}
-                        className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 coarse:min-h-11 font-mono text-xs transition-colors hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/10 aria-pressed:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {reward.code} · {reward.percentOff}% off
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
             )}
-          </section>
 
-          {error && !couponError && (
-            <CheckoutErrorPanel
-              error={error}
-              cartLines={lines}
-              onReviewCart={() => setCartSheetOpen(true)}
-              onAcceptNewTotal={handleAcceptNewTotal}
-              onRetry={() => submit(expectedTotalMinor)}
-              onLeaveCheckedOutCart={() => cartIdStore.clear()}
-            />
-          )}
-
-          <Button
-            type="submit"
-            disabled={placeOrder.isPending}
-            className="h-12 text-base lg:self-start lg:px-10"
-          >
-            {placeOrder.isPending ? 'Placing order…' : 'Place order'}
-          </Button>
-        </form>
+            <Button
+              type="submit"
+              disabled={placeOrder.isPending || isConfirmingTotal}
+              className="h-12 text-base lg:self-start lg:px-10"
+            >
+              {placeOrder.isPending ? (
+                'Placing order…'
+              ) : (
+                // The amount on the button, as production apps do, so the total is visible on
+                // phones where the summary sits below.
+                <>
+                  Place order · <Money amountMinor={totalMinor} />
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
 
         <details
           open
@@ -189,21 +196,27 @@ export function CheckoutPage() {
                   <Money amountMinor={subtotalMinor} />
                 </dd>
               </div>
-              {couponCode && acceptedTotalMinor === undefined && (
+              {activeQuote?.coupon && (
                 <div className="flex justify-between text-success">
-                  <dt>Reward {couponCode}</dt>
-                  <dd>Applied when you order</dd>
+                  <dt>
+                    Reward <span className="font-mono">{activeQuote.coupon.code}</span>
+                  </dt>
+                  <dd>
+                    −<Money amountMinor={discountMinor} />
+                  </dd>
                 </div>
               )}
               <div className="flex items-baseline justify-between border-t border-border pt-3">
                 <dt className="font-medium">Total</dt>
                 <dd>
-                  <Money
-                    amountMinor={acceptedTotalMinor ?? subtotalMinor}
-                    className="text-2xl font-semibold"
-                  />
+                  <Money amountMinor={totalMinor} className="text-2xl font-semibold" />
                 </dd>
               </div>
+              {discountMinor > 0 && (
+                <p className="rounded-md bg-success/10 px-3 py-2 text-center text-sm font-medium text-success">
+                  You're saving <Money amountMinor={discountMinor} /> on this order
+                </p>
+              )}
             </dl>
           </div>
         </details>

@@ -3,7 +3,7 @@ import { ProductImage } from '@/components/ProductImage';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import type { Product } from '@/lib/apiTypes';
 import { getProductMedia } from '@/lib/productMedia';
-import { AddToCartButton } from '../cart/AddToCartButton';
+import { CardCartControl } from '../cart/CardCartControl';
 import { StockNote } from './StockNote';
 
 interface QuickViewDialogProps {
@@ -29,7 +29,9 @@ export function QuickViewDialog({ product, onClose }: QuickViewDialogProps) {
                 <Money amountMinor={product.unitPriceMinor} />
               </p>
               <StockNote stock={product.stock} />
-              <AddToCartButton product={product} className="mt-2 h-11 w-full" />
+              <div className="mt-2">
+                <CardCartControl product={product} />
+              </div>
             </div>
           </div>
         )}

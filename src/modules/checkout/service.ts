@@ -86,9 +86,23 @@ async function redeemCoupon(
   );
   if (redeemed) return redeemed;
 
-  const existing = await collections.coupons.findOne({ code }, { session });
-  if (!existing) throw new AppError('COUPON_NOT_FOUND', `Coupon ${code} does not exist`);
-  throw new AppError('COUPON_ALREADY_REDEEMED', `Coupon ${code} has already been redeemed`);
+  throw unusableCouponError(await collections.coupons.findOne({ code }, { session }), code);
+}
+
+/** Explains why a code cannot be used: it does not exist, or it has already been redeemed. */
+function unusableCouponError(coupon: CouponDoc | null, code: string): AppError {
+  return coupon
+    ? new AppError('COUPON_ALREADY_REDEEMED', `Coupon ${code} has already been redeemed`)
+    : new AppError('COUPON_NOT_FOUND', `Coupon ${code} does not exist`);
+}
+
+/** The only place an order's discount and total are derived: used by quotes and by checkout. */
+export function calculateTotals(
+  subtotalMinor: number,
+  percentOff: number | null,
+): { discountMinor: number; totalMinor: number } {
+  const discountMinor = percentOff === null ? 0 : calculateDiscountMinor(subtotalMinor, percentOff);
+  return { discountMinor, totalMinor: subtotalMinor - discountMinor };
 }
 
 /** Conditional decrement: a unit is only taken if enough stock remains at write time. */
@@ -149,8 +163,7 @@ async function createOrder(
   const coupon = request.couponCode
     ? await redeemCoupon(context, normalizeCouponCode(request.couponCode), orderId, session)
     : null;
-  const discountMinor = coupon ? calculateDiscountMinor(subtotalMinor, coupon.percentOff) : 0;
-  const totalMinor = subtotalMinor - discountMinor;
+  const { discountMinor, totalMinor } = calculateTotals(subtotalMinor, coupon?.percentOff ?? null);
 
   if (request.expectedTotalMinor !== undefined && request.expectedTotalMinor !== totalMinor) {
     throw new AppError('PRICE_CHANGED', 'The total no longer matches what you expected', {
@@ -224,4 +237,49 @@ export async function placeOrder(
     if (!winner) throw error;
     return { order: winner, isReplay: true };
   }
+}
+
+export interface CheckoutQuote {
+  subtotalMinor: number;
+  discountMinor: number;
+  totalMinor: number;
+  currency: string;
+  coupon: { code: string; percentOff: number } | null;
+}
+
+/**
+ * What checkout would charge right now, optionally with a reward code. Read-only: nothing is
+ * reserved or redeemed, so placing the order re-checks everything inside its transaction.
+ */
+export async function quoteCheckout(
+  context: AppContext,
+  cartId: string,
+  couponCode: string | undefined,
+): Promise<CheckoutQuote> {
+  const { carts, coupons } = context.collections;
+  const cart = await carts.findOne({ _id: new ObjectId(cartId) });
+  if (!cart) throw new AppError('CART_NOT_FOUND', `Cart ${cartId} does not exist`);
+  if (cart.status !== 'OPEN') {
+    throw new AppError('CART_NOT_OPEN', 'This cart has already been checked out', {
+      orderId: cart.orderId?.toHexString() ?? null,
+    });
+  }
+
+  const productsById = await findProductsById(context, productIdsOf(cart.items));
+  const lines = priceCartItems(cart.items, productsById);
+  const subtotalMinor = sumMinor(lines.map((line) => line.lineTotalMinor));
+
+  let coupon: CouponDoc | null = null;
+  if (couponCode) {
+    const code = normalizeCouponCode(couponCode);
+    coupon = await coupons.findOne({ code });
+    if (coupon?.status !== 'AVAILABLE') throw unusableCouponError(coupon, code);
+  }
+
+  return {
+    subtotalMinor,
+    ...calculateTotals(subtotalMinor, coupon?.percentOff ?? null),
+    currency: CURRENCY,
+    coupon: coupon ? { code: coupon.code, percentOff: coupon.percentOff } : null,
+  };
 }

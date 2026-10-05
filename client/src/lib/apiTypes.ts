@@ -12,5 +12,5 @@ export type CartLine = Cart['lines'][number];
 export type Product = JsonBody<paths['/products/{productId}']['get'], 200>;
 export type ProductPage = JsonBody<paths['/products']['get'], 200>;
 export type Order = JsonBody<paths['/orders/{orderId}']['get'], 200>;
-export type CouponPage = JsonBody<paths['/admin/coupons']['get'], 200>;
-export type Coupon = CouponPage['data'][number];
+export type Reward = JsonBody<paths['/rewards']['get'], 200>[number];
+export type CheckoutQuote = JsonBody<paths['/carts/{cartId}/quote']['get'], 200>;

@@ -1,4 +1,5 @@
 import { Type, type Static } from '@sinclair/typebox';
+import { MinorAmount } from '../../shared/schemas.js';
 import { CartIdParams } from '../carts/schemas.js';
 
 export { CartIdParams };
@@ -21,3 +22,18 @@ export const CheckoutBody = Type.Object({
   ),
 });
 export type CheckoutBody = Static<typeof CheckoutBody>;
+
+export const QuoteQuery = Type.Object({
+  couponCode: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+});
+
+export const QuoteSchema = Type.Object({
+  subtotalMinor: MinorAmount,
+  discountMinor: MinorAmount,
+  totalMinor: MinorAmount,
+  currency: Type.String(),
+  coupon: Type.Union([
+    Type.Object({ code: Type.String(), percentOff: Type.Integer() }),
+    Type.Null(),
+  ]),
+});

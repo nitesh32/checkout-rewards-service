@@ -14,8 +14,9 @@ test.describe('product card', () => {
     await expect(page.locator('main h2')).toHaveCount(6);
   });
 
+  // Scoped to <main>: toasts are list items too, and "… added to cart" names the product.
   const card = (page: import('@playwright/test').Page) =>
-    page.getByRole('listitem').filter({ hasText: PRODUCT });
+    page.locator('main').getByRole('listitem').filter({ hasText: PRODUCT });
 
   test('the cart control is its own row below the photo, not an overlay on it', async ({
     page,
@@ -81,18 +82,70 @@ test.describe('product card', () => {
     expect(boxes.textLeft).toBeGreaterThanOrEqual(boxes.iconRight);
   });
 
-  test('the quantity stepper takes exactly the place of the Add button', async ({ page }) => {
+  test('after adding, a compact stepper sits in the Add button slot without resizing the card', async ({
+    page,
+  }) => {
     const add = card(page).getByRole('button', { name: /Add to cart/ });
-    const before = await boxOf(add);
+    const slot = await boxOf(add);
+    const cardBefore = await boxOf(card(page));
 
     await add.click();
     const stepper = card(page).getByRole('group', { name: /Quantity of/ });
-    await expect(stepper).toBeVisible();
-    const after = await boxOf(stepper);
+    await expect(stepper).toContainText('1');
+    await expect(card(page).getByText('In cart')).toBeVisible();
 
-    expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
-    expect(Math.abs(after.height - before.height)).toBeLessThanOrEqual(1);
-    expect(Math.abs(after.width - before.width)).toBeLessThanOrEqual(1);
-    await expect(stepper).toContainText('1 in cart');
+    const box = await boxOf(stepper);
+    expect(box.y).toBeGreaterThanOrEqual(slot.y - 1);
+    expect(box.y + box.height).toBeLessThanOrEqual(slot.y + slot.height + 1);
+    expect(Math.abs((await boxOf(card(page))).height - cardBefore.height)).toBeLessThanOrEqual(1);
+
+    // Minus and plus sit next to the quantity, not at the far edges of the card.
+    const minus = await boxOf(stepper.getByRole('button').first());
+    const plus = await boxOf(stepper.getByRole('button').last());
+    expect(plus.x - (minus.x + minus.width)).toBeLessThan(60);
+  });
+
+  test('minus on the last unit removes the product and brings back Add to cart', async ({
+    page,
+  }) => {
+    await card(page)
+      .getByRole('button', { name: /Add to cart/ })
+      .click();
+
+    await card(page)
+      .getByRole('button', { name: `Remove ${PRODUCT} from cart` })
+      .click();
+
+    await expect(card(page).getByRole('group', { name: /Quantity of/ })).toHaveCount(0);
+    await expect(card(page).getByRole('button', { name: /Add to cart/ })).toBeVisible();
+  });
+
+  test('plus and minus change the quantity on the card', async ({ page }) => {
+    await card(page)
+      .getByRole('button', { name: /Add to cart/ })
+      .click();
+    const stepper = card(page).getByRole('group', { name: /Quantity of/ });
+
+    await stepper.getByRole('button', { name: `Increase quantity of ${PRODUCT}` }).click();
+    await expect(stepper).toContainText('2');
+    await stepper.getByRole('button', { name: `Decrease quantity of ${PRODUCT}` }).click();
+    await expect(stepper).toContainText('1');
+  });
+});
+
+test.describe('product card on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('the stepper fits inside the narrow card', async ({ page }) => {
+    await page.goto('/products');
+    const card = page.locator('main').getByRole('listitem').filter({ hasText: PRODUCT });
+    await card.getByRole('button', { name: /Add to cart/ }).click();
+    const stepper = card.getByRole('group', { name: /Quantity of/ });
+    await expect(stepper).toBeVisible();
+
+    const cardBox = await boxOf(card);
+    const stepperBox = await boxOf(stepper);
+    expect(stepperBox.x).toBeGreaterThanOrEqual(cardBox.x);
+    expect(stepperBox.x + stepperBox.width).toBeLessThanOrEqual(cardBox.x + cardBox.width);
   });
 });

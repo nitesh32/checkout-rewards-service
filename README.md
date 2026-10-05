@@ -75,6 +75,8 @@ Money is always an integer in minor units (paise), in fields ending `Minor`. Rou
 | POST   | `/carts/:cartId/items`            | 200     | 404 `PRODUCT_NOT_FOUND`, 409 `INSUFFICIENT_STOCK` / `CART_NOT_OPEN`, 422 `QUANTITY_LIMIT_EXCEEDED`, 400 `VALIDATION_ERROR` |
 | PATCH  | `/carts/:cartId/items/:productId` | 200     | as above, plus 404 `CART_ITEM_NOT_FOUND`                                                                                   |
 | DELETE | `/carts/:cartId/items/:productId` | 200     | 404 `CART_ITEM_NOT_FOUND`, 409 `CART_NOT_OPEN`                                                                             |
+| GET    | `/carts/:cartId/quote`            | 200     | Read-only preview of totals; query `couponCode?`. 404 `COUPON_NOT_FOUND`, 409 `COUPON_ALREADY_REDEEMED` / `CART_NOT_OPEN`  |
+| GET    | `/rewards`                        | 200     | Public list of available rewards `[{ code, percentOff }]`, best first                                                      |
 | POST   | `/carts/:cartId/checkout`         | 201/200 | Header `Idempotency-Key` required. Body `{ couponCode?, expectedTotalMinor? }`. See below                                  |
 | GET    | `/orders/:orderId`                | 200     | 404 `ORDER_NOT_FOUND`                                                                                                      |
 | POST   | `/admin/coupons`                  | 201     | 409 `NO_ELIGIBLE_MILESTONE` (details: `placedOrders`, `nextMilestoneAt`)                                                   |

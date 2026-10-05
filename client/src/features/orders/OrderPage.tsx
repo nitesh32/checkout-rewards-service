@@ -55,6 +55,12 @@ export function OrderPage() {
           <span className="text-muted-foreground">Placed {formatDateTime(placedAt)}</span>
         </div>
       </div>
+      {coupon && discountMinor > 0 && (
+        <p className="rounded-lg bg-success/10 px-4 py-3 font-medium text-success">
+          You saved <Money amountMinor={discountMinor} /> with{' '}
+          <span className="font-mono">{coupon.code}</span>
+        </p>
+      )}
       {isReplay && (
         <p className="text-muted-foreground">
           This checkout had already succeeded, so your retry returned the original order. You were

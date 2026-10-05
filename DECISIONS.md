@@ -223,6 +223,32 @@ to the server: use `q` with cursor pagination, keep the previous results visible
 loads (`placeholderData: keepPreviousData`), cancel superseded requests (the query function already
 passes its `AbortSignal` to the API client), and add an indexed lower-case prefix field or Atlas Search.
 
+### Decision 11: A read-only quote endpoint, so a reward code is confirmed before ordering
+
+**Context:** Production checkouts check a promo code when it is applied and show the exact saving
+and new total before the customer pays. The API only applied a code while placing the order, so
+the storefront could not show the discount, could not explain a bad code until ordering, and had to
+switch off the price-change guard whenever a code was entered.
+
+**Options considered:** (a) Keep applying codes only at order time; (b) compute the discount in the
+browser from the coupon's percentage; (c) a read-only `GET /carts/:cartId/quote?couponCode=` that
+validates the code and returns subtotal, discount and total.
+
+**Choice:** (c), plus a public `GET /rewards` (code and percentage only), so shoppers no longer read
+`/admin/coupons`.
+
+**Why:** The quote and the order share one pure `calculateTotals`, so money is computed in one
+place (option (b) would have duplicated the rounding rule in the client). The quote redeems nothing,
+so applying a code is free and repeatable. The storefront can now send the quoted total as
+`expectedTotalMinor`, so the price-change guard covers discounted orders too.
+
+**Consequences:** A quote is advisory. If another order uses the code between Apply and Place order,
+the order still fails safely with `COUPON_ALREADY_REDEEMED` (redemption happens inside the order
+transaction); the storefront then removes the code and explains why. Following Baymard and
+Voucherify's coupon UX guidance, checkout suggests the best reward with its exact saving (one tap,
+never applied silently), keeps manual entry behind "Have a code?", shows specific inline errors, and
+replaces the field with "applied, you save ₹X" and a Remove link.
+
 ## 4. Transaction, concurrency and idempotency strategy
 
 **Checkout, in one transaction** (`modules/checkout/service.ts`):

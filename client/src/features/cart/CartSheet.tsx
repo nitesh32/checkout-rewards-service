@@ -1,4 +1,4 @@
-import { Minus, Plus, ShoppingBag, TriangleAlert } from 'lucide-react';
+import { ShoppingBag, Trash2, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
@@ -14,17 +14,16 @@ import {
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CartLine } from '@/lib/apiTypes';
+import { useAvailableRewards } from '../rewards/rewardsApi';
 import { useCart, useRemoveItem, useSetQuantity } from './cartApi';
 import { useCartSheet } from './CartSheetContext';
-
-const MAX_LINE_QUANTITY = 100;
+import { QuantityStepper } from './QuantityStepper';
 
 function CartLineItem({ line }: { line: CartLine }) {
   const setQuantity = useSetQuantity();
   const removeItem = useRemoveItem();
   const isBusy = setQuantity.isPending || removeItem.isPending;
-  const maxQuantity = Math.min(MAX_LINE_QUANTITY, line.availableStock);
-  const isAtMaxQuantity = line.quantity >= maxQuantity;
+  const removeLine = () => removeItem.mutate(line.productId);
 
   return (
     <li className="flex gap-4 py-4">
@@ -48,44 +47,24 @@ function CartLineItem({ line }: { line: CartLine }) {
         )}
 
         <div className="flex items-center justify-between">
-          <div
-            className="flex items-center gap-1"
-            role="group"
-            aria-label={`Quantity of ${line.name}`}
-          >
-            <Button
-              variant="outline"
-              size="iconSm"
-              aria-label={`Decrease quantity of ${line.name}`}
-              disabled={isBusy || line.quantity <= 1}
-              onClick={() =>
-                setQuantity.mutate({ productId: line.productId, quantity: line.quantity - 1 })
-              }
-            >
-              <Minus />
-            </Button>
-            <span className="w-8 text-center tabular-nums">{line.quantity}</span>
-            <Button
-              variant="outline"
-              size="iconSm"
-              aria-label={`Increase quantity of ${line.name}`}
-              title={isAtMaxQuantity ? `Only ${line.availableStock} available` : undefined}
-              disabled={isBusy || isAtMaxQuantity}
-              onClick={() =>
-                setQuantity.mutate({ productId: line.productId, quantity: line.quantity + 1 })
-              }
-            >
-              <Plus />
-            </Button>
-          </div>
-          <button
-            type="button"
+          <QuantityStepper
+            itemName={line.name}
+            quantity={line.quantity}
+            availableStock={line.availableStock}
+            isBusy={isBusy}
+            onChange={(next) => setQuantity.mutate({ productId: line.productId, quantity: next })}
+            onRemove={removeLine}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Remove all ${line.name} from cart`}
             disabled={isBusy}
-            onClick={() => removeItem.mutate(line.productId)}
-            className="inline-flex items-center rounded-sm px-1 text-xs coarse:min-h-11 coarse:px-2 text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            onClick={removeLine}
+            className="text-muted-foreground hover:text-danger"
           >
-            Remove
-          </button>
+            <Trash2 /> Remove
+          </Button>
         </div>
       </div>
     </li>
@@ -111,6 +90,7 @@ function CartSkeleton() {
 
 function CartBody() {
   const cart = useCart();
+  const rewards = useAvailableRewards();
   const { setOpen } = useCartSheet();
 
   if (cart.isLoading) return <CartSkeleton />;
@@ -143,6 +123,7 @@ function CartBody() {
   }
 
   const { lines, subtotalMinor } = cart.data;
+  const hasReward = (rewards.data?.length ?? 0) > 0;
   const hasUnavailableLine = lines.some((line) => !line.isPurchasable);
 
   return (
@@ -163,7 +144,9 @@ function CartBody() {
           <span className="text-muted-foreground">Subtotal</span>
           <Money amountMinor={subtotalMinor} className="text-lg font-semibold" />
         </div>
-        <p className="text-xs text-muted-foreground">Rewards are applied at checkout.</p>
+        {hasReward && (
+          <p className="text-xs font-medium text-accent">You have a reward to use at checkout.</p>
+        )}
         <Link
           to="/checkout"
           className={buttonClasses({ className: 'h-12 w-full text-base' })}

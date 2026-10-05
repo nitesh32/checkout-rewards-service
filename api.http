@@ -33,6 +33,12 @@ Content-Type: application/json
 ### View the cart: live prices, subtotal, per-line availability
 GET {{baseUrl}}/carts/{{cartId}}
 
+### Preview the totals with a reward code before ordering (read-only; nothing is redeemed)
+GET {{baseUrl}}/carts/{{cartId}}/quote?couponCode=SAVE-ABCDEFGH
+
+### Rewards any shopper can use right now, best first
+GET {{baseUrl}}/rewards
+
 ### Check out. 201 the first time; repeating this exact request returns 200 + Idempotent-Replayed: true
 # @name checkout
 POST {{baseUrl}}/carts/{{cartId}}/checkout

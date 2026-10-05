@@ -1,5 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, unwrap } from '@/lib/api';
+import type { Cart } from '@/lib/apiTypes';
 import { cartIdStore } from '@/lib/cartStore';
 import { queryKeys } from '@/lib/queryKeys';
 
@@ -11,6 +12,25 @@ interface PlaceOrderInput {
 }
 
 const HTTP_OK = 200;
+
+/**
+ * What checkout would charge for this cart, with an optional reward code. Read-only on the
+ * server, so it is safe to ask before the customer commits; the order re-checks everything.
+ */
+export function quoteQueryOptions(cart: Cart, couponCode: string | null) {
+  return queryOptions({
+    queryKey: queryKeys.quote(cart.id, couponCode, cart.updatedAt),
+    queryFn: async ({ signal }) =>
+      (
+        await unwrap(
+          api.GET('/carts/{cartId}/quote', {
+            params: { path: { cartId: cart.id }, query: couponCode ? { couponCode } : {} },
+            signal,
+          }),
+        )
+      ).data,
+  });
+}
 
 export function usePlaceOrder() {
   const queryClient = useQueryClient();
@@ -35,9 +55,13 @@ export function usePlaceOrder() {
       queryClient.setQueryData(queryKeys.order(order.id), order);
       // The cart is spent; the next "add to cart" starts a fresh one.
       cartIdStore.clear();
+      // A reward used by this order is no longer available.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rewards });
     },
-    // After a failure the cart on screen may be stale (stock or prices moved), so reload it.
-    onError: (_error, { cartId }) =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.cart(cartId) }),
+    // After a failure the cart, its quote or the rewards on screen may be stale, so reload them.
+    onError: (_error, { cartId }) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.cart(cartId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rewards });
+    },
   });
 }

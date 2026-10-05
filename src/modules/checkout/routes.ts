@@ -3,12 +3,29 @@ import type { AppContext } from '../../context.js';
 import { errorResponses } from '../../shared/schemas.js';
 import { OrderSchema } from '../orders/schemas.js';
 import { toOrderDto } from '../orders/service.js';
-import { CartIdParams, CheckoutBody, CheckoutHeaders } from './schemas.js';
-import { placeOrder } from './service.js';
+import { CartIdParams, CheckoutBody, CheckoutHeaders, QuoteQuery, QuoteSchema } from './schemas.js';
+import { placeOrder, quoteCheckout } from './service.js';
 
 export const checkoutRoutes =
   (context: AppContext): FastifyPluginCallbackTypebox =>
   (app, _options, done) => {
+    app.get(
+      '/carts/:cartId/quote',
+      {
+        schema: {
+          tags: ['Checkout'],
+          summary: 'Preview the totals, optionally with a reward code (read-only)',
+          description:
+            'Validates the code and returns what checkout would charge now. Nothing is redeemed; ' +
+            'placing the order re-checks the code and the prices.',
+          params: CartIdParams,
+          querystring: QuoteQuery,
+          response: { 200: QuoteSchema, ...errorResponses(400, 404, 409) },
+        },
+      },
+      (request) => quoteCheckout(context, request.params.cartId, request.query.couponCode),
+    );
+
     app.post(
       '/carts/:cartId/checkout',
       {

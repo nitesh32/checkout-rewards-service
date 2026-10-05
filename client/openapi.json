@@ -1438,6 +1438,185 @@
         }
       }
     },
+    "/carts/{cartId}/quote": {
+      "get": {
+        "summary": "Preview the totals, optionally with a reward code (read-only)",
+        "tags": [
+          "Checkout"
+        ],
+        "description": "Validates the code and returns what checkout would charge now. Nothing is redeemed; placing the order re-checks the code and the prices.",
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            },
+            "in": "query",
+            "name": "couponCode",
+            "required": false
+          },
+          {
+            "schema": {
+              "pattern": "^[a-f0-9]{24}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "cartId",
+            "required": true,
+            "description": "ObjectId hex"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "subtotalMinor",
+                    "discountMinor",
+                    "totalMinor",
+                    "currency",
+                    "coupon"
+                  ],
+                  "properties": {
+                    "subtotalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "discountMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "totalMinor": {
+                      "minimum": 0,
+                      "description": "Amount in minor units (paise)",
+                      "type": "integer"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "coupon": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "percentOff"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "percentOff": {
+                          "type": "integer"
+                        }
+                      },
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/carts/{cartId}/checkout": {
       "post": {
         "summary": "Check out a cart (idempotent)",
@@ -2681,6 +2860,43 @@
                           "type": "string"
                         },
                         "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rewards": {
+      "get": {
+        "summary": "Rewards any shopper can use right now, best first",
+        "tags": [
+          "Rewards"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "code",
+                      "percentOff"
+                    ],
+                    "properties": {
+                      "code": {
+                        "type": "string"
+                      },
+                      "percentOff": {
+                        "minimum": 1,
+                        "maximum": 100,
+                        "type": "integer"
                       }
                     }
                   }

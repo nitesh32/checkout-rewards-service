@@ -1,14 +1,12 @@
-import { Minus, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Check } from 'lucide-react';
 import type { Product } from '@/lib/apiTypes';
 import { AddToCartButton } from './AddToCartButton';
 import { useCart, useRemoveItem, useSetQuantity } from './cartApi';
-
-const MAX_LINE_QUANTITY = 100;
+import { QuantityStepper } from './QuantityStepper';
 
 /**
- * The last row of a product card: "Add to cart" until the product is in the cart, then a quantity
- * stepper in the very same slot, so the card never changes size.
+ * The last row of a product card: "Add to cart" until the product is in the cart, then an
+ * "In cart" row of the same height with a compact stepper, so the card never changes size.
  */
 export function CardCartControl({ product }: { product: Product }) {
   const cart = useCart();
@@ -20,41 +18,25 @@ export function CardCartControl({ product }: { product: Product }) {
     return <AddToCartButton product={product} className="w-full font-semibold" />;
   }
 
-  const isBusy = setQuantity.isPending || removeItem.isPending;
-  const maxQuantity = Math.min(MAX_LINE_QUANTITY, product.stock);
-  const decrease = () =>
-    quantity === 1
-      ? removeItem.mutate(product.id)
-      : setQuantity.mutate({ productId: product.id, quantity: quantity - 1 });
-
+  // A container query, not a breakpoint: what matters is the width of this card, which is
+  // narrow in a two-column phone grid. There the label is dropped and the stepper is centred.
   return (
-    <div
-      role="group"
-      aria-label={`Quantity of ${product.name}`}
-      className="flex items-center justify-between rounded-lg bg-accent text-accent-foreground"
-    >
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={`Decrease quantity of ${product.name}`}
-        disabled={isBusy}
-        onClick={decrease}
-        className="hover:bg-accent-foreground/15"
-      >
-        <Minus />
-      </Button>
-      <span className="text-sm font-semibold tabular-nums">{quantity} in cart</span>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={`Increase quantity of ${product.name}`}
-        title={quantity >= maxQuantity ? `Only ${product.stock} available` : undefined}
-        disabled={isBusy || quantity >= maxQuantity}
-        onClick={() => setQuantity.mutate({ productId: product.id, quantity: quantity + 1 })}
-        className="hover:bg-accent-foreground/15"
-      >
-        <Plus />
-      </Button>
+    <div className="@container">
+      <div className="flex h-9 items-center justify-center gap-2 rounded-lg bg-accent/10 coarse:h-auto @[12.5rem]:justify-between @[12.5rem]:pl-3">
+        <span className="hidden items-center gap-1.5 text-sm font-medium text-accent @[12.5rem]:flex">
+          <Check className="size-4" aria-hidden />
+          In cart
+        </span>
+        <QuantityStepper
+          tone="filled"
+          itemName={product.name}
+          quantity={quantity}
+          availableStock={product.stock}
+          isBusy={setQuantity.isPending || removeItem.isPending}
+          onChange={(next) => setQuantity.mutate({ productId: product.id, quantity: next })}
+          onRemove={() => removeItem.mutate(product.id)}
+        />
+      </div>
     </div>
   );
 }
