@@ -2,10 +2,14 @@
 
 Backend for an e-commerce store: carts, idempotent checkout, order snapshots, milestone coupons
 and an admin sales report. Built to stay correct when requests are retried, checkouts overlap and
-two operations compete for the same stock or coupon.
+two operations compete for the same stock or coupon. A small storefront in `client/` (optional in
+the assignment) shows the backend's behaviour: shop, cart, checkout with rewards, order receipt.
 
-**Stack:** Node 20+, TypeScript (strict), Fastify 5, MongoDB 7 (replica set, official driver),
+**Backend:** Node 20+, TypeScript (strict), Fastify 5, MongoDB 7 (replica set, official driver),
 TypeBox schemas, Vitest.
+
+**Client:** Vite, React 19, TypeScript, Tailwind CSS, TanStack Query, React Router; API types are
+generated from the backend's OpenAPI document. Tested with Vitest and Playwright.
 
 The reasoning behind the design lives in **[DECISIONS.md](./DECISIONS.md)**.
 
@@ -13,6 +17,7 @@ The reasoning behind the design lives in **[DECISIONS.md](./DECISIONS.md)**.
 
 ```bash
 make up        # MongoDB + API (http://localhost:3000, docs at /docs) + client (http://localhost:5173)
+make demo      # same, but every order creates a reward automatically (quickest way to try rewards)
 make test      # backend tests, client tests, browser test
 make reset     # stop everything and delete the database
 ```
@@ -36,27 +41,28 @@ npm run dev                      # seeds 6 products on start (idempotent)
 | ------------------------- | -------------------------------------------------- | --------------------------------------------------------- |
 | `PORT`                    | `3000`                                             |                                                           |
 | `MONGO_URI`               | `mongodb://localhost:27017/?directConnection=true` |                                                           |
-| `REWARD_EVERY_N_ORDERS`   | `5` (Docker and `.env.example` set `1`)            | `n`: one coupon per n-th order                            |
+| `REWARD_EVERY_N_ORDERS`   | `5` (`make demo`: `1`)                             | `n`: one coupon per n-th order                            |
 | `REWARD_DISCOUNT_PERCENT` | `10`                                               | `x`: percent off for each coupon                          |
-| `REWARD_AUTO_GENERATE`    | `false` (Docker and `.env.example` set `true`)     | create the reward as soon as an order reaches a milestone |
+| `REWARD_AUTO_GENERATE`    | `false` (`make demo`: `true`)                      | create the reward as soon as an order reaches a milestone |
 
 Seed data: 6 premium-electronics products (speaker, earbuds, headphones, phone, smartwatch, camera), including `CAMERA-MIRRORLESS` with only **3** units in stock. Seeding only adds missing SKUs, so run `make reset` to replace an existing database.
 
 ## Try the rewards in two minutes
 
-The Docker setup uses `n = 1` with `REWARD_AUTO_GENERATE=true`, so every order creates a reward
-straight away.
+**As the assignment describes (`make up`).** Every 5th order reaches a milestone, and a reward is
+created when an administrator asks for it:
 
-1. `make up`, open http://localhost:5173, add a product and place an order.
-2. A reward is now available: the header shows **Rewards · 1**, and the **Rewards** page lists it.
+1. `make up`, open http://localhost:5173 and place 5 orders.
+2. Open **Rewards** and press **Generate reward** (the admin operation `POST /admin/coupons`).
+   Before the 5th order it explains how many orders are still needed.
 3. Add a product again: checkout suggests the reward with its exact saving. Apply it (or use
    **Use at checkout** on the Rewards page) and place the order.
 4. `GET /admin/reports/sales` (Swagger at http://localhost:3000/docs) shows the discount and the
    coupon counts.
 
-With `REWARD_AUTO_GENERATE=false` (the default) rewards are created only on an administrator's
-request, as the assignment describes: press **Generate reward** on the Rewards page, which calls
-`POST /admin/coupons` and explains how many orders are still needed when none is due.
+**Quickest (`make demo`).** Every order reaches a milestone and creates its reward automatically
+(`REWARD_EVERY_N_ORDERS=1`, `REWARD_AUTO_GENERATE=true`): place one order and a reward is waiting
+at the next checkout. Run `make reset` first if the database already has orders from `make up`.
 
 ## Product photos
 

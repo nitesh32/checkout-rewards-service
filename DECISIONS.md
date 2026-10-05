@@ -317,10 +317,20 @@ as `VALIDATION_ERROR` (the header is declared required in the schema, so the Ope
 
 ## 7. Implemented vs deferred
 
-**Implemented:** products with seed data; carts (create, view with live totals, add, patch,
-remove); idempotent transactional checkout; optional coupon and price guard; order snapshots;
-admin coupon generation and listing; admin order listing; consistent sales report; cursor
-pagination; OpenAPI docs; Docker setup; concurrency, idempotency, coupon, report, cart and money tests.
+**Implemented (backend):** products with seed data; carts (create, view with live totals, add,
+patch, remove); idempotent transactional checkout; optional coupon and price guard; order
+snapshots; admin coupon generation and listing; optional automatic reward generation
+(`REWARD_AUTO_GENERATE`, off by default); a read-only checkout quote (`GET /carts/:cartId/quote`)
+and a public list of available rewards (`GET /rewards`); admin order listing; consistent sales
+report; cursor pagination; OpenAPI docs; Docker setup; concurrency, idempotency, coupon, quote,
+report, cart and money tests.
+
+**Implemented (client, optional in the assignment):** a storefront that exercises the backend:
+product list with in-browser search, filters and sorting; cart drawer with quantity steppers;
+checkout with a suggested reward, code entry, a confirmed discount before ordering and an
+idempotency key reused on retry; specific handling of stock, price and coupon errors; order
+receipt; Rewards page with an admin "Generate reward" button. Unit tests and Playwright tests
+(including touch-target, keyboard-focus and race scenarios).
 
 **Deferred on purpose:** authentication and authorisation (admin routes are only separated by
 path); coupon expiry and minimum order value; stock reservations; real payments (outbox/saga,

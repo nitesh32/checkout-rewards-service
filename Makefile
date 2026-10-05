@@ -1,7 +1,10 @@
-.PHONY: up down reset test
+.PHONY: up demo down reset test
 
 up: ## Build and start MongoDB, the API (:3000, docs at /docs) and the client (:5173)
 	docker compose up --build
+
+demo: ## Same as up, but every order creates a reward automatically (quickest way to try rewards)
+	REWARD_EVERY_N_ORDERS=1 REWARD_AUTO_GENERATE=true docker compose up --build
 
 down: ## Stop everything (data is kept)
 	docker compose down
