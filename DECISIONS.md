@@ -362,36 +362,28 @@ before it shows up as errors; replay is by key only for successful checkouts.
 
 ## 9. AI usage
 
-The first build plan was drafted with a chat assistant; the code was written with Claude Code, and I
-reviewed the plan before any code existed and checked the result with tests meant to break it.
+How I worked with AI (Claude Code):
 
-Where I changed what the AI proposed:
+1. **Requirements first.** I went through the brief myself and listed the functional and
+   non-functional requirements before asking the AI for anything.
+2. **Then a plan.** I wrote a build plan from those requirements.
+3. **I changed the stack in that plan:** Fastify for the backend API, Vite + React for the
+   frontend, and a single Makefile to run and test the whole stack.
+4. **The AI worked from my plan.** I gave the plan to Claude Code to implement.
+5. **I verified each commit** before moving on.
+6. **Docs and tests.** I updated the docs and made Claude Code write tests for each feature,
+   including concurrency and retry cases, rather than accepting code without them.
+7. **UX review.** I reviewed the UX of every feature in the browser and asked for improvements.
 
-- **Idempotency bug in the plan.** The plan returned a replay only if a pre-check by key found an
-  order, and relied on the unique index for the parallel case. Reasoning through ten parallel
-  retries showed the losers would not hit that index: they would conflict on the cart claim, retry,
-  see a checked-out cart and return `409 CART_ALREADY_CHECKED_OUT` instead of the original order.
-  I added the "load the winner by key and replay" branch, then proved the test is meaningful by
-  removing that branch: the ten-parallel-retries test fails. Likewise, deleting the stock guard
-  fails four tests and deleting the `AVAILABLE` coupon condition fails two.
-- **Cart edits.** The plan suggested atomic array updates with a `version` field that nothing used.
-  I replaced this with one transactional read-modify-write helper (decision 7).
-- **Scope.** The plan estimated about 7.5 hours against a 4–6 hour cap and included swagger
-  generation, zod and extra filters. I trimmed it to fit the timebox.
-- **A bug that passing tests did not reveal.** The in-process tests used Fastify's `inject`, which
-  hides how real clients behave. A smoke test over real HTTP showed that `POST /carts` with
-  `content-type: application/json` and an empty body returned 400 (Fastify rejects empty JSON
-  bodies). I added `tolerateEmptyJsonBodies` and a regression test.
+Examples where I redirected the AI's output:
 
-I did not accept generated code without running it: the suite uses a real replica set so the
-transaction behaviour is exercised for real.
-
-## 10. What I would examine first with two more hours
-
-1. A k6 load test on one hot product to measure transaction retries and p99 latency, then decide
-   whether stock sharding is needed.
-2. Idempotency-key TTL and an in-flight state, so a slow first request is distinguishable from a lost one.
-3. A stock-reservation design (with expiry) and its interaction with the cart view.
-4. A property-based test for money (random subtotals and percentages: `0 ≤ discount ≤ subtotal`,
-   `total + discount = subtotal`).
-5. Removing the single order counter as a contention point.
+- One revised plan switched the project to plain JavaScript; I rejected it and kept TypeScript for
+  type safety.
+- A UI spec I used asked for a "points" system the backend does not have. When the AI flagged
+  this, I chose to show rewards as the real coupons the backend issues, so the UI never promises a
+  discount the API would not give.
+- After testing, I found that orders did not create rewards by themselves. That led to the
+  "Generate reward" admin button and the optional `REWARD_AUTO_GENERATE` setting (decision 5).
+- From my UX review: the Add to cart button moved off the product photo, the quantity stepper
+  became compact, minus on the last unit now removes the item, and reward codes are confirmed
+  (with the exact saving) before the order is placed.
